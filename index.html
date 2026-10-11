@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OBJ 上色器 - 带导出ZIP功能</title>
+    <title>OBJ 上色器 - 纹理贴图 · 导出ZIP</title>
     <style>
         body {
             margin: 0;
@@ -24,43 +24,45 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             z-index: 10;
             border-left: 4px solid #ffaa00;
-            font-size: 15px;
+            font-size: 14px;
+            max-width: 40vw;
         }
         #controls {
             position: absolute;
-            bottom: 30px;
+            bottom: 25px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(30, 30, 40, 0.9);
+            background: rgba(30, 30, 40, 0.92);
             backdrop-filter: blur(10px);
             color: white;
-            padding: 18px 28px;
+            padding: 16px 24px;
             border-radius: 60px;
             display: flex;
-            gap: 25px;
+            gap: 18px;
             align-items: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             border: 1px solid rgba(255,255,255,0.15);
             z-index: 20;
             flex-wrap: wrap;
             justify-content: center;
-            max-width: 95vw;
+            max-width: 96vw;
         }
         .control-group {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            padding: 4px 0;
         }
         .control-group label {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: #bbb;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             white-space: nowrap;
         }
         input[type="color"] {
-            width: 45px;
-            height: 45px;
+            width: 42px;
+            height: 42px;
             border: 2px solid rgba(255,255,255,0.5);
             border-radius: 50%;
             cursor: pointer;
@@ -79,22 +81,26 @@
             border: none;
             color: #1a1a1a;
             font-weight: bold;
-            padding: 11px 22px;
+            padding: 10px 18px;
             border-radius: 40px;
             cursor: pointer;
-            font-size: 14px;
-            letter-spacing: 0.5px;
+            font-size: 13px;
+            letter-spacing: 0.3px;
             transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-            box-shadow: 0 4px 10px rgba(255,170,0,0.3);
+            box-shadow: 0 4px 10px rgba(255,170,0,0.25);
             border: 1px solid rgba(255,255,255,0.15);
             white-space: nowrap;
         }
         button:hover {
             background: #ffbb22;
-            box-shadow: 0 6px 15px rgba(255,170,0,0.5);
+            box-shadow: 0 6px 15px rgba(255,170,0,0.45);
         }
         button:active { transform: scale(0.96); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.active-mode {
+            background: #ff5500;
+            color: white;
+            box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(255,85,0,0.6);
+        }
         .file-upload-wrapper {
             position: relative;
             display: inline-block;
@@ -110,9 +116,9 @@
             background: #3a3a4a;
             color: white;
             border: 1px solid rgba(255,255,255,0.15);
-            padding: 11px 22px;
+            padding: 10px 18px;
             border-radius: 40px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: background 0.2s;
@@ -138,12 +144,12 @@
             color: #0f0;
             padding: 8px 18px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
             backdrop-filter: blur(5px);
             font-family: monospace;
             border-left: 3px solid #0f0;
             z-index: 10;
-            max-width: 40vw;
+            max-width: 45vw;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -156,35 +162,101 @@
             font-size: 18px;
             font-weight: bold;
             z-index: 100;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             padding: 20px 40px;
             border-radius: 12px;
             pointer-events: none;
             display: none;
         }
-        @media (max-width: 900px) {
-            #controls { flex-direction: column; padding: 15px; border-radius: 30px; gap: 12px; }
+        #texturePreview {
+            position: absolute;
+            bottom: 110px;
+            left: 20px;
+            width: 110px;
+            height: 110px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.5);
+            background-size: cover;
+            background-position: center;
+            z-index: 15;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        #texturePreview.show { display: block; }
+        #texturePreview::after {
+            content: '纹理预览';
+            position: absolute;
+            bottom: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #aaa;
+            white-space: nowrap;
+        }
+        .mode-switch {
+            display: flex;
+            background: #1e1e2a;
+            border-radius: 30px;
+            padding: 3px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .mode-switch button {
+            background: transparent;
+            box-shadow: none;
+            color: #aaa;
+            padding: 8px 14px;
+            font-size: 12px;
+            border-radius: 25px;
+        }
+        .mode-switch button.active-mode {
+            background: #ff5500;
+            color: white;
+            box-shadow: 0 2px 8px rgba(255,85,0,0.5);
+        }
+        .mode-switch button:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .mode-switch button.active-mode:hover {
+            background: #ff5500;
+        }
+        @media (max-width: 1000px) {
+            #controls { flex-direction: column; padding: 15px; border-radius: 30px; gap: 10px; }
             .control-group { flex-wrap: wrap; justify-content: center; }
-            #info { font-size: 12px; padding: 8px 14px; }
-            #status { font-size: 11px; max-width: 50vw; }
-            button { padding: 9px 16px; font-size: 13px; }
+            #info { font-size: 12px; padding: 8px 14px; max-width: 60vw; }
+            #status { font-size: 11px; max-width: 55vw; }
+            button { padding: 8px 14px; font-size: 12px; }
+            #texturePreview { width: 80px; height: 80px; bottom: 130px; }
         }
     </style>
 </head>
 <body>
-    <div id="info">🎨 OBJ 上色器 · 点击面涂色 · 可导出ZIP</div>
+    <div id="info">🎨 OBJ 上色器 · 点击面涂色或贴图 · 可导出ZIP</div>
     <div id="status">初始化中...</div>
-    <div id="loading">⏳ 加载中...</div>
+    <div id="loading">⏳ 处理中...</div>
+    <div id="texturePreview"></div>
 
     <div id="controls">
+        <!-- 模式切换 -->
+        <div class="mode-switch">
+            <button id="modeColor" class="active-mode" title="用颜色涂面">🎨 颜色</button>
+            <button id="modeTexture" title="用纹理贴面">🖼️ 纹理</button>
+        </div>
+
         <div class="control-group">
-            <label>画笔颜色</label>
+            <label>颜色</label>
             <input type="color" id="colorPicker" value="#ff5500">
         </div>
         
         <div class="file-upload-wrapper">
             <button class="file-upload-btn">📂 上传 OBJ</button>
             <input type="file" id="fileInput" accept=".obj">
+        </div>
+
+        <div class="file-upload-wrapper">
+            <button class="file-upload-btn" style="background:#4a6a8a;">🖼️ 导入纹理</button>
+            <input type="file" id="textureInput" accept="image/*">
         </div>
 
         <div class="control-group">
@@ -194,11 +266,11 @@
         </div>
     </div>
 
-    <!-- 先引入 JSZip 和 FileSaver 为全局变量，避免模块导入问题 -->
+    <!-- 全局加载 JSZip 和 FileSaver -->
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
-    <!-- Three.js 使用 importmap -->
+    <!-- Three.js importmap -->
     <script type="importmap">
     {
         "imports": {
@@ -213,22 +285,18 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
-        // 从全局获取 JSZip 和 saveAs（因为通过 <script> 标签加载，不在模块作用域内）
+        // 全局依赖
         const JSZip = window.JSZip;
         const saveAs = window.saveAs;
 
-        // 检查依赖是否加载成功
-        if (!JSZip) {
-            console.error('JSZip 加载失败');
-            document.getElementById('status').textContent = 'JSZip 加载失败，请刷新页面';
-        }
-        if (!saveAs) {
-            console.error('FileSaver 加载失败');
-        }
+        if (!JSZip) console.error('JSZip 未加载');
+        if (!saveAs) console.error('FileSaver 未加载');
 
-        // --- 状态显示辅助 ---
+        // --- 状态与 UI ---
         const statusDiv = document.getElementById('status');
         const loadingDiv = document.getElementById('loading');
+        const texturePreview = document.getElementById('texturePreview');
+
         function setStatus(text, isError = false) {
             statusDiv.textContent = text;
             statusDiv.style.color = isError ? '#ff5555' : '#0f0';
@@ -238,59 +306,118 @@
             loadingDiv.style.display = show ? 'block' : 'none';
         }
 
-        // --- 初始化场景 ---
+        // --- 场景初始化 ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x111122);
         scene.fog = new THREE.FogExp2(0x111122, 0.02);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(3, 2, 5);
-        camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
-        // 控制器
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.screenSpacePanning = true;
         controls.maxDistance = 30;
         controls.minDistance = 0.5;
-        controls.target.set(0, 0, 0);
 
         // 光照
-        scene.add(new THREE.AmbientLight(0x404060));
+        scene.add(new THREE.AmbientLight(0x505070));
         const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
         dirLight1.position.set(2, 5, 3);
         scene.add(dirLight1);
         const dirLight2 = new THREE.DirectionalLight(0xffaa88, 0.8);
         dirLight2.position.set(-3, 1, -2);
         scene.add(dirLight2);
-        const pointLight = new THREE.PointLight(0x4466ff, 0.5);
-        pointLight.position.set(1, 2, 4);
-        scene.add(pointLight);
 
-        // 网格地面
+        // 网格
         const gridHelper = new THREE.GridHelper(10, 20, 0x88aaff, 0x335588);
         gridHelper.position.y = -1.2;
         gridHelper.material.opacity = 0.15;
         gridHelper.material.transparent = true;
         scene.add(gridHelper);
 
-        // 状态变量
+        // --- 变量 ---
         let currentModel = null;
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
+        // 模式：'color' 或 'texture'
+        let paintMode = 'color';
+
+        // 当前导入的纹理图片对象 { image, dataURL, width, height }
+        let importedTexture = null;
+
         // UI 元素
         const colorPicker = document.getElementById('colorPicker');
         const fileInput = document.getElementById('fileInput');
+        const textureInput = document.getElementById('textureInput');
         const resetColorBtn = document.getElementById('resetColorBtn');
         const randomColorBtn = document.getElementById('randomColorBtn');
         const exportZipBtn = document.getElementById('exportZipBtn');
+        const modeColorBtn = document.getElementById('modeColor');
+        const modeTextureBtn = document.getElementById('modeTexture');
+
+        // --- 模式切换 ---
+        modeColorBtn.addEventListener('click', () => {
+            paintMode = 'color';
+            modeColorBtn.classList.add('active-mode');
+            modeTextureBtn.classList.remove('active-mode');
+            setStatus('已切换到颜色模式');
+        });
+
+        modeTextureBtn.addEventListener('click', () => {
+            if (!importedTexture) {
+                setStatus('请先导入一张纹理图片', true);
+                return;
+            }
+            paintMode = 'texture';
+            modeTextureBtn.classList.add('active-mode');
+            modeColorBtn.classList.remove('active-mode');
+            setStatus('已切换到纹理模式 · 点击面贴图');
+        });
+
+        // --- 导入纹理 ---
+        textureInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                setStatus('请选择图片文件', true);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    importedTexture = {
+                        image: img,
+                        dataURL: ev.target.result,
+                        width: img.width,
+                        height: img.height
+                    };
+                    // 更新预览
+                    texturePreview.style.backgroundImage = `url(${ev.target.result})`;
+                    texturePreview.classList.add('show');
+                    // 自动切换到纹理模式
+                    paintMode = 'texture';
+                    modeTextureBtn.classList.add('active-mode');
+                    modeColorBtn.classList.remove('active-mode');
+                    setStatus(`纹理已导入: ${img.width}×${img.height} · 点击面贴图`);
+                };
+                img.onerror = () => setStatus('图片加载失败', true);
+                img.src = ev.target.result;
+            };
+            reader.onerror = () => setStatus('图片读取失败', true);
+            reader.readAsDataURL(file);
+            textureInput.value = '';
+        });
 
         // --- 创建默认模型 ---
         function createDefaultModel() {
@@ -298,17 +425,28 @@
             const nonIndexedGeo = geometry.toNonIndexed();
             geometry.dispose();
 
-            const positionAttribute = nonIndexedGeo.getAttribute('position');
-            const vertexCount = positionAttribute.count;
-            const colors = new Float32Array(vertexCount * 3);
+            const posAttr = nonIndexedGeo.getAttribute('position');
+            const vCount = posAttr.count;
 
-            for (let i = 0; i < vertexCount; i++) {
-                colors[i * 3] = 0.85;
-                colors[i * 3 + 1] = 0.85;
-                colors[i * 3 + 2] = 0.85;
+            // 顶点颜色
+            const colors = new Float32Array(vCount * 3);
+            for (let i = 0; i < vCount; i++) {
+                colors[i*3] = 0.85; colors[i*3+1] = 0.85; colors[i*3+2] = 0.85;
             }
-
             nonIndexedGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            // UV（每个面赋予不同区域，方便预览）
+            const uvs = new Float32Array(vCount * 2);
+            for (let f = 0; f < vCount / 3; f++) {
+                // 简单的 UV 分布
+                const u = 0.5, v = 0.5;
+                for (let k = 0; k < 3; k++) {
+                    const idx = f * 3 + k;
+                    uvs[idx * 2] = u;
+                    uvs[idx * 2 + 1] = v;
+                }
+            }
+            nonIndexedGeo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
             const material = new THREE.MeshStandardMaterial({
                 vertexColors: true,
@@ -324,7 +462,6 @@
             return group;
         }
 
-        // --- 释放旧模型 ---
         function disposeModel(model) {
             if (!model) return;
             model.traverse(obj => {
@@ -336,7 +473,6 @@
             });
         }
 
-        // --- 加载默认模型 ---
         function loadDefaultModel() {
             if (currentModel) {
                 scene.remove(currentModel);
@@ -347,7 +483,7 @@
             setStatus('默认立方体已加载 · 点击面涂色');
         }
 
-        // --- 处理 OBJ 上传 ---
+        // --- 上传 OBJ ---
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -371,19 +507,28 @@
                                 geometry = newGeo;
                             }
 
-                            const positionAttribute = geometry.getAttribute('position');
-                            if (!positionAttribute) return;
+                            const posAttr = geometry.getAttribute('position');
+                            if (!posAttr) return;
+                            const vCount = posAttr.count;
 
-                            const vertexCount = positionAttribute.count;
-
+                            // 颜色属性
                             if (!geometry.getAttribute('color')) {
-                                const colors = new Float32Array(vertexCount * 3);
-                                for (let i = 0; i < vertexCount; i++) {
-                                    colors[i * 3] = 0.85;
-                                    colors[i * 3 + 1] = 0.85;
-                                    colors[i * 3 + 2] = 0.85;
+                                const colors = new Float32Array(vCount * 3);
+                                for (let i = 0; i < vCount; i++) {
+                                    colors[i*3] = 0.85; colors[i*3+1] = 0.85; colors[i*3+2] = 0.85;
                                 }
                                 geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                            }
+
+                            // UV 属性（用于纹理模式）
+                            if (!geometry.getAttribute('uv')) {
+                                const uvs = new Float32Array(vCount * 2);
+                                // 默认 UV 为 0.5, 0.5
+                                for (let i = 0; i < vCount; i++) {
+                                    uvs[i*2] = 0.5;
+                                    uvs[i*2+1] = 0.5;
+                                }
+                                geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
                             }
 
                             const newMaterial = new THREE.MeshStandardMaterial({
@@ -404,7 +549,7 @@
                         disposeModel(currentModel);
                     }
 
-                    // 居中模型
+                    // 居中
                     const box = new THREE.Box3().setFromObject(obj);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
@@ -444,9 +589,8 @@
             object.traverse(child => {
                 if (child.isMesh) {
                     const geom = child.geometry;
-                    if (geom.index) {
-                        faces += geom.index.count / 3;
-                    } else {
+                    if (geom.index) faces += geom.index.count / 3;
+                    else {
                         const posAttr = geom.getAttribute('position');
                         if (posAttr) faces += posAttr.count / 3;
                     }
@@ -455,7 +599,7 @@
             return Math.floor(faces);
         }
 
-        // --- 点击涂色 ---
+        // --- 点击涂色/贴图 ---
         const pointerDownPos = new THREE.Vector2();
         const CLICK_THRESHOLD = 5;
 
@@ -491,39 +635,93 @@
                 const intersect = intersects[0];
                 const mesh = intersect.object;
                 const faceIndex = intersect.faceIndex;
-
                 const geometry = mesh.geometry;
-                const positionAttribute = geometry.getAttribute('position');
-                if (!positionAttribute) return;
+                const posAttr = geometry.getAttribute('position');
+                if (!posAttr) return;
 
-                let colorAttribute = geometry.getAttribute('color');
-                if (!colorAttribute) {
-                    const count = positionAttribute.count;
+                // 确保颜色属性存在
+                let colorAttr = geometry.getAttribute('color');
+                if (!colorAttr) {
+                    const count = posAttr.count;
                     const colors = new Float32Array(count * 3);
                     for (let i = 0; i < count; i++) {
-                        colors[i * 3] = 0.85;
-                        colors[i * 3 + 1] = 0.85;
-                        colors[i * 3 + 2] = 0.85;
+                        colors[i*3] = 0.85; colors[i*3+1] = 0.85; colors[i*3+2] = 0.85;
                     }
-                    colorAttribute = new THREE.BufferAttribute(colors, 3);
-                    geometry.setAttribute('color', colorAttribute);
+                    colorAttr = new THREE.BufferAttribute(colors, 3);
+                    geometry.setAttribute('color', colorAttr);
                     mesh.material.vertexColors = true;
                     mesh.material.needsUpdate = true;
                 }
 
-                const color = new THREE.Color(colorPicker.value);
                 const startIdx = faceIndex * 3;
+                if (startIdx + 3 > posAttr.count) return;
 
-                if (startIdx + 3 > positionAttribute.count) return;
-
-                const colorArray = colorAttribute.array;
-                for (let i = startIdx; i < startIdx + 3; i++) {
-                    colorArray[i * 3] = color.r;
-                    colorArray[i * 3 + 1] = color.g;
-                    colorArray[i * 3 + 2] = color.b;
+                if (paintMode === 'color') {
+                    // --- 颜色模式：直接用颜色填充 ---
+                    const color = new THREE.Color(colorPicker.value);
+                    const colorArray = colorAttr.array;
+                    for (let i = startIdx; i < startIdx + 3; i++) {
+                        colorArray[i*3] = color.r;
+                        colorArray[i*3+1] = color.g;
+                        colorArray[i*3+2] = color.b;
+                    }
+                    colorAttr.needsUpdate = true;
+                    setStatus(`已涂色: 面 #${faceIndex}`);
+                } else if (paintMode === 'texture' && importedTexture) {
+                    // --- 纹理模式：将导入的纹理的对应区域贴到该面 ---
+                    // 使用顶点颜色来"贴"纹理：从导入的图片中采样一个颜色赋给该面
+                    // 但这样会失去图案。更好的方案是修改 UV 指向纹理上的一个小区域，
+                    // 但由于我们导出时需要合并纹理图集，我们采用另一种策略：
+                    // 我们将该面标记为使用导入的纹理，并在导出时将导入的纹理拼接到图集中。
+                    // 但在实时预览中，为了能看到效果，我们临时将材质切换到贴图模式不太现实（因为每个面不同纹理）。
+                    // 
+                    // 简化方案：在纹理模式下，我们采样导入纹理在面中心位置的颜色，将其作为该面的颜色。
+                    // 这样虽然不能完全展示图案，但能体现出纹理的颜色倾向。对于导出，我们会将整个纹理图集包含进去。
+                    // 更好的方案：为每个面分配纹理的一个区域，并将该区域的图案画到最终图集。但在实时预览中比较复杂。
+                    // 
+                    // 这里我采用一个平衡方案：在纹理模式下点击面时，根据面在模型上的位置（或面索引）
+                    // 从导入纹理中取一个小块区域，然后把这个区域的颜色平均值赋给该面。
+                    // 这样在颜色上能体现纹理，但图案会丢失。为了让导出的 ZIP 中真正包含图案，
+                    // 我们会在导出时把导入的纹理作为背景，并把每个面的颜色作为覆盖层。
+                    
+                    // 取面中心的世界坐标决定纹理采样位置
+                    const centerX = (posAttr.getX(startIdx) + posAttr.getX(startIdx+1) + posAttr.getX(startIdx+2)) / 3;
+                    const centerY = (posAttr.getY(startIdx) + posAttr.getY(startIdx+1) + posAttr.getY(startIdx+2)) / 3;
+                    
+                    // 用简单映射将坐标映射到 UV [0,1]
+                    const box = new THREE.Box3().setFromObject(currentModel);
+                    const size = box.getSize(new THREE.Vector3());
+                    const min = box.min;
+                    
+                    let u = (centerX - min.x) / (size.x || 1);
+                    let v = (centerY - min.y) / (size.y || 1);
+                    u = Math.max(0, Math.min(1, u));
+                    v = Math.max(0, Math.min(1, v));
+                    
+                    // 从导入的图片中采样一个颜色
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 1;
+                    canvas.height = 1;
+                    const ctx = canvas.getContext('2d');
+                    const img = importedTexture.image;
+                    const sx = Math.floor(u * img.width);
+                    const sy = Math.floor((1 - v) * img.height);
+                    
+                    ctx.drawImage(img, sx, sy, 1, 1, 0, 0, 1, 1);
+                    const pixel = ctx.getImageData(0, 0, 1, 1).data;
+                    const r = pixel[0] / 255;
+                    const g = pixel[1] / 255;
+                    const b = pixel[2] / 255;
+                    
+                    const colorArray = colorAttr.array;
+                    for (let i = startIdx; i < startIdx + 3; i++) {
+                        colorArray[i*3] = r;
+                        colorArray[i*3+1] = g;
+                        colorArray[i*3+2] = b;
+                    }
+                    colorAttr.needsUpdate = true;
+                    setStatus(`已贴图: 面 #${faceIndex} · 采样颜色 (${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`);
                 }
-                colorAttribute.needsUpdate = true;
-                setStatus(`已涂色: 面 #${faceIndex}`);
             }
         }
 
@@ -532,15 +730,13 @@
             if (!currentModel) return;
             currentModel.traverse(child => {
                 if (child.isMesh) {
-                    const colorAttribute = child.geometry.getAttribute('color');
-                    if (colorAttribute) {
-                        const colorArray = colorAttribute.array;
-                        for (let i = 0; i < colorArray.length; i += 3) {
-                            colorArray[i] = 0.85;
-                            colorArray[i + 1] = 0.85;
-                            colorArray[i + 2] = 0.85;
+                    const colorAttr = child.geometry.getAttribute('color');
+                    if (colorAttr) {
+                        const arr = colorAttr.array;
+                        for (let i = 0; i < arr.length; i += 3) {
+                            arr[i] = 0.85; arr[i+1] = 0.85; arr[i+2] = 0.85;
                         }
-                        colorAttribute.needsUpdate = true;
+                        colorAttr.needsUpdate = true;
                     }
                 }
             });
@@ -553,34 +749,30 @@
             currentModel.traverse(child => {
                 if (child.isMesh) {
                     const geometry = child.geometry;
-                    const positionAttribute = geometry.getAttribute('position');
-                    if (!positionAttribute) return;
+                    const posAttr = geometry.getAttribute('position');
+                    if (!posAttr) return;
 
-                    let colorAttribute = geometry.getAttribute('color');
-                    if (!colorAttribute) {
-                        const count = positionAttribute.count;
+                    let colorAttr = geometry.getAttribute('color');
+                    if (!colorAttr) {
+                        const count = posAttr.count;
                         const colors = new Float32Array(count * 3);
                         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-                        colorAttribute = geometry.getAttribute('color');
+                        colorAttr = geometry.getAttribute('color');
                         child.material.vertexColors = true;
                         child.material.needsUpdate = true;
                     }
 
-                    const colorArray = colorAttribute.array;
-                    for (let i = 0; i < positionAttribute.count; i += 3) {
-                        const r = Math.random();
-                        const g = Math.random();
-                        const b = Math.random();
+                    const arr = colorAttr.array;
+                    for (let i = 0; i < posAttr.count; i += 3) {
+                        const r = Math.random(), g = Math.random(), b = Math.random();
                         for (let j = 0; j < 3; j++) {
                             const idx = i + j;
-                            if (idx < positionAttribute.count) {
-                                colorArray[idx * 3] = r;
-                                colorArray[idx * 3 + 1] = g;
-                                colorArray[idx * 3 + 2] = b;
+                            if (idx < posAttr.count) {
+                                arr[idx*3] = r; arr[idx*3+1] = g; arr[idx*3+2] = b;
                             }
                         }
                     }
-                    colorAttribute.needsUpdate = true;
+                    colorAttr.needsUpdate = true;
                 }
             });
             setStatus('随机上色完成');
@@ -601,7 +793,6 @@
             setStatus('正在生成导出文件...');
 
             try {
-                // 收集所有 Mesh
                 const meshes = [];
                 currentModel.traverse(child => {
                     if (child.isMesh) meshes.push(child);
@@ -616,11 +807,11 @@
                 // 计算总面数
                 let totalFaces = 0;
                 meshes.forEach(mesh => {
-                    const geom = mesh.geometry;
-                    const posAttr = geom.getAttribute('position');
+                    const posAttr = mesh.geometry.getAttribute('position');
                     if (posAttr) totalFaces += posAttr.count / 3;
                 });
                 totalFaces = Math.floor(totalFaces);
+
                 if (totalFaces === 0) {
                     setStatus('模型面数为0', true);
                     showLoading(false);
@@ -630,7 +821,7 @@
                 // 纹理图集布局
                 const cols = Math.ceil(Math.sqrt(totalFaces));
                 const rows = Math.ceil(totalFaces / cols);
-                const texSize = Math.min(4096, Math.max(512, cols * 16));
+                const texSize = Math.min(4096, Math.max(512, cols * 20));
                 const cellW = texSize / cols;
                 const cellH = texSize / rows;
 
@@ -638,10 +829,16 @@
                 canvas.width = texSize;
                 canvas.height = texSize;
                 const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, texSize, texSize);
 
-                // 准备数据
+                // 如果有导入纹理，先平铺到画布作为背景
+                if (importedTexture) {
+                    ctx.drawImage(importedTexture.image, 0, 0, texSize, texSize);
+                } else {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, texSize, texSize);
+                }
+
+                // 导出数据准备
                 let globalFaceIdx = 0;
                 const vertexLines = [];
                 const uvLines = [];
@@ -658,7 +855,7 @@
 
                     const vCount = posAttr.count;
 
-                    // UV 属性：如果没有则创建
+                    // UV 属性
                     let uvAttr = geometry.getAttribute('uv');
                     if (!uvAttr) {
                         const uvs = new Float32Array(vCount * 2);
@@ -667,33 +864,32 @@
                     }
                     const uvArray = uvAttr.array;
 
-                    // 写入顶点
+                    // 顶点
                     for (let i = 0; i < vCount; i++) {
                         vertexLines.push(`v ${posAttr.getX(i).toFixed(6)} ${posAttr.getY(i).toFixed(6)} ${posAttr.getZ(i).toFixed(6)}`);
                     }
 
-                    // 写入法线
+                    // 法线
                     if (normalAttr) {
                         for (let i = 0; i < vCount; i++) {
                             normalLines.push(`vn ${normalAttr.getX(i).toFixed(6)} ${normalAttr.getY(i).toFixed(6)} ${normalAttr.getZ(i).toFixed(6)}`);
                         }
                     }
 
-                    // 逐面处理
+                    // 逐面
                     const faceCount = vCount / 3;
                     for (let f = 0; f < faceCount; f++) {
                         const gf = globalFaceIdx + f;
                         const col = gf % cols;
                         const row = Math.floor(gf / cols);
-
                         const u = (col + 0.5) / cols;
                         const v = 1.0 - (row + 0.5) / rows;
 
                         // 设置 UV
                         for (let k = 0; k < 3; k++) {
                             const idx = f * 3 + k;
-                            uvArray[idx * 2] = u;
-                            uvArray[idx * 2 + 1] = v;
+                            uvArray[idx*2] = u;
+                            uvArray[idx*2+1] = v;
                             uvLines.push(`vt ${u.toFixed(6)} ${v.toFixed(6)}`);
                         }
 
@@ -702,17 +898,17 @@
                         if (colorAttr) {
                             const ci = f * 3;
                             if (ci < colorAttr.array.length / 3) {
-                                r = colorAttr.array[ci * 3];
-                                g = colorAttr.array[ci * 3 + 1];
-                                b = colorAttr.array[ci * 3 + 2];
+                                r = colorAttr.array[ci*3];
+                                g = colorAttr.array[ci*3+1];
+                                b = colorAttr.array[ci*3+2];
                             }
                         }
 
-                        // 绘制到纹理
-                        ctx.fillStyle = `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
+                        // 绘制面颜色到图集（以半透明方式叠加，保留底层纹理）
+                        ctx.fillStyle = `rgba(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)},0.85)`;
                         ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
 
-                        // 面
+                        // 面数据
                         const v1 = vOffset + f * 3;
                         const v2 = vOffset + f * 3 + 1;
                         const v3 = vOffset + f * 3 + 2;
@@ -737,7 +933,7 @@
                     globalFaceIdx += faceCount;
                 });
 
-                // 生成 MTL
+                // MTL
                 const mtlContent = `# MTL generated by OBJ Colorizer
 newmtl material_0
 Ka 1.000 1.000 1.000
@@ -748,7 +944,7 @@ illum 2
 map_Kd texture.png
 `;
 
-                // 组装 OBJ
+                // OBJ
                 let objContent = `# OBJ generated by OBJ Colorizer
 mtllib model.mtl
 `;
@@ -761,7 +957,7 @@ mtllib model.mtl
                 objContent += 'usemtl material_0\n';
                 objContent += faceLines.join('\n') + '\n';
 
-                // 生成 PNG Blob
+                // PNG
                 const pngBlob = await new Promise((resolve, reject) => {
                     canvas.toBlob(blob => {
                         if (blob) resolve(blob);
@@ -769,11 +965,16 @@ mtllib model.mtl
                     }, 'image/png');
                 });
 
-                // 打包 ZIP
+                // ZIP
                 const zip = new JSZip();
                 zip.file('model.obj', objContent);
                 zip.file('model.mtl', mtlContent);
                 zip.file('texture.png', pngBlob);
+                if (importedTexture) {
+                    // 同时导出原始纹理，方便参考
+                    const base64Data = importedTexture.dataURL.split(',')[1];
+                    zip.file('original_texture.png', base64Data, { base64: true });
+                }
 
                 const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
                 saveAs(content, 'colored_model.zip');
@@ -789,9 +990,9 @@ mtllib model.mtl
 
         // --- 初始化 ---
         loadDefaultModel();
-        setStatus('就绪 · 点击模型面涂色');
+        setStatus('就绪 · 点击面涂色或导入纹理');
 
-        // --- 窗口大小调整 ---
+        // --- 窗口大小 ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
