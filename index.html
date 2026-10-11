@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OBJ 上色器 - 纹理贴图 · 导出ZIP</title>
+    <title>OBJ 上色器 - 调色板 · 放置立方体 · 导出ZIP</title>
     <style>
         body {
             margin: 0;
@@ -11,7 +11,6 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #111122;
         }
-        /* 通用面板样式 */
         .panel {
             position: absolute;
             background: rgba(0, 0, 0, 0.7);
@@ -23,7 +22,6 @@
             transition: transform 0.3s ease, opacity 0.3s ease;
             border: 1px solid rgba(255,255,255,0.1);
         }
-        /* 顶部信息面板 */
         #info {
             top: 20px;
             left: 20px;
@@ -33,7 +31,6 @@
             pointer-events: none;
             max-width: 40vw;
         }
-        /* 状态面板 */
         #status {
             top: 20px;
             right: 20px;
@@ -48,7 +45,6 @@
             text-overflow: ellipsis;
             pointer-events: none;
         }
-        /* 底部控制栏 */
         #controls {
             bottom: 25px;
             left: 50%;
@@ -74,7 +70,6 @@
             opacity: 0;
             pointer-events: none;
         }
-        /* 面板切换按钮 */
         .toggle-btn {
             position: absolute;
             z-index: 30;
@@ -102,51 +97,12 @@
         .toggle-btn:active {
             transform: scale(0.95);
         }
-        /* 底部控制栏切换按钮 */
         #toggleControls {
             bottom: 25px;
             left: 50%;
             transform: translateX(-50%);
             transition: bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #toggleControls.shifted {
-            bottom: 25px;
-        }
-        /* 顶部面板切换按钮 */
-        #toggleInfo {
-            top: 20px;
-            left: 20px;
-            display: none;
-            z-index: 31;
-        }
-        #toggleInfo.visible {
-            display: flex;
-        }
-        #info.collapsed {
-            transform: translateX(-120%);
-            opacity: 0;
-            pointer-events: none;
-        }
-        /* 状态面板关闭 */
-        #status.collapsed {
-            transform: translateX(120%);
-            opacity: 0;
-            pointer-events: none;
-        }
-        #toggleStatus {
-            top: 20px;
-            right: 20px;
-            display: none;
-            z-index: 31;
-            width: 36px;
-            height: 36px;
-            font-size: 16px;
-        }
-        #toggleStatus.visible {
-            display: flex;
-        }
-
-        /* 内联元素样式 */
         .control-group {
             display: flex;
             align-items: center;
@@ -236,6 +192,19 @@
             background: #3cb371;
             box-shadow: 0 6px 15px rgba(46,139,87,0.5);
         }
+        .place-btn {
+            background: #8a2be2;
+            color: white;
+            box-shadow: 0 4px 10px rgba(138,43,226,0.3);
+        }
+        .place-btn:hover {
+            background: #9b4aea;
+            box-shadow: 0 6px 15px rgba(138,43,226,0.5);
+        }
+        .place-btn.active-mode {
+            background: #6a1b9a;
+            box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(138,43,226,0.6);
+        }
         #loading {
             position: absolute;
             top: 50%; left: 50%;
@@ -265,7 +234,6 @@
             display: none;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             pointer-events: none;
-            transition: opacity 0.3s;
         }
         #texturePreview.show { display: block; }
         #texturePreview::after {
@@ -304,7 +272,96 @@
         .mode-switch button.active-mode:hover {
             background: #ff5500;
         }
-        /* 帮助提示 */
+        /* 调色板 */
+        .palette-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        #paletteBtn {
+            background: #3a3a4a;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 10px 14px;
+            border-radius: 40px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        #paletteBtn:hover { background: #4a4a5a; }
+        #palettePopup {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(25, 25, 35, 0.98);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 12px;
+            display: none;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.15);
+            z-index: 40;
+            width: 280px;
+        }
+        #palettePopup.show { display: grid; }
+        .palette-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+            position: relative;
+        }
+        .palette-swatch:hover {
+            transform: scale(1.15);
+            border-color: #fff;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+            z-index: 2;
+        }
+        .palette-swatch.selected {
+            border-color: #ffaa00;
+            box-shadow: 0 0 0 2px #ffaa00, 0 0 12px rgba(255,170,0,0.6);
+            transform: scale(1.1);
+        }
+        .palette-swatch .swatch-check {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 16px;
+            text-shadow: 0 0 4px black, 0 0 4px black;
+            display: none;
+            pointer-events: none;
+        }
+        .palette-swatch.selected .swatch-check { display: block; }
+        /* 放置立方体提示 */
+        #placeHint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(138,43,226,0.9);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-size: 15px;
+            font-weight: bold;
+            z-index: 50;
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 4px 20px rgba(138,43,226,0.6);
+            border: 2px solid rgba(255,255,255,0.3);
+            animation: pulse 1.5s infinite;
+        }
+        #placeHint.show { display: block; }
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
         #hint {
             position: absolute;
             bottom: 100px;
@@ -326,29 +383,21 @@
             #texturePreview { width: 80px; height: 80px; bottom: 130px; }
             #hint { display: none; }
             #toggleControls { width: 40px; height: 40px; font-size: 18px; }
+            #palettePopup { width: 240px; grid-template-columns: repeat(5, 1fr); }
         }
     </style>
 </head>
 <body>
-    <!-- 顶部信息面板 -->
     <div id="info" class="panel">
-        🎨 OBJ 上色器 · 点击面涂色或贴图 · 可导出ZIP
+        🎨 OBJ 上色器 · 调色板 · 放置立方体 · 导出ZIP
     </div>
-    <!-- 信息面板展开按钮 -->
-    <button id="toggleInfo" class="toggle-btn" title="显示信息">ℹ️</button>
 
-    <!-- 状态面板 -->
     <div id="status" class="panel">初始化中...</div>
-    <!-- 状态面板展开按钮 -->
-    <button id="toggleStatus" class="toggle-btn" title="显示状态">📊</button>
 
-    <!-- 纹理预览 -->
     <div id="texturePreview"></div>
-
-    <!-- 加载提示 -->
     <div id="loading">⏳ 处理中...</div>
+    <div id="placeHint">🖱️ 点击场景放置立方体 · 按 ESC 取消</div>
 
-    <!-- 底部控制栏 -->
     <div id="controls">
         <!-- 模式切换 -->
         <div class="mode-switch">
@@ -356,9 +405,14 @@
             <button id="modeTexture" title="用纹理贴面">🖼️ 纹理</button>
         </div>
 
+        <!-- 颜色选择 + 调色板 -->
         <div class="control-group">
             <label>颜色</label>
             <input type="color" id="colorPicker" value="#ff5500">
+            <div class="palette-wrapper">
+                <button id="paletteBtn" title="打开调色板">🎨</button>
+                <div id="palettePopup"></div>
+            </div>
         </div>
         
         <div class="file-upload-wrapper">
@@ -372,17 +426,16 @@
         </div>
 
         <div class="control-group">
+            <button id="placeCubeBtn" class="place-btn" title="进入放置模式">🧊 放置立方体</button>
             <button id="resetColorBtn">🔄 重置</button>
             <button id="randomColorBtn">🎲 随机</button>
             <button id="exportZipBtn" class="export-btn">📦 导出 ZIP</button>
         </div>
     </div>
-    <!-- 底部控制栏开关 -->
     <button id="toggleControls" class="toggle-btn" title="收起/展开控制栏">▼</button>
 
-    <!-- 帮助提示 -->
     <div id="hint">
-        快捷键：[H] 隐藏/显示所有面板<br>
+        快捷键：[H] 隐藏/显示面板 · [P] 放置模式 · [ESC] 取消<br>
         拖拽旋转 · 滚轮缩放 · 点击面涂色
     </div>
 
@@ -405,22 +458,19 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
-        // 全局依赖
         const JSZip = window.JSZip;
         const saveAs = window.saveAs;
 
         if (!JSZip) console.error('JSZip 未加载');
         if (!saveAs) console.error('FileSaver 未加载');
 
-        // --- 状态与 UI ---
+        // --- UI 元素 ---
         const statusDiv = document.getElementById('status');
         const loadingDiv = document.getElementById('loading');
         const texturePreview = document.getElementById('texturePreview');
         const controlsPanel = document.getElementById('controls');
-        const infoPanel = document.getElementById('info');
         const toggleControlsBtn = document.getElementById('toggleControls');
-        const toggleInfoBtn = document.getElementById('toggleInfo');
-        const toggleStatusBtn = document.getElementById('toggleStatus');
+        const placeHint = document.getElementById('placeHint');
 
         function setStatus(text, isError = false) {
             statusDiv.textContent = text;
@@ -431,164 +481,10 @@
             loadingDiv.style.display = show ? 'block' : 'none';
         }
 
-        // --- 面板折叠控制 ---
+        // --- 面板折叠 ---
         let controlsCollapsed = false;
-        let infoCollapsed = false;
-        let statusCollapsed = false;
         let allHidden = false;
 
-        // 底部控制栏开关
-        toggleControlsBtn.addEventListener('click', () => {
-            controlsCollapsed = !controlsCollapsed;
-            if (controlsCollapsed) {
-                controlsPanel.classList.add('collapsed');
-                toggleControlsBtn.textContent = '▲';
-                toggleControlsBtn.title = '展开控制栏';
-            } else {
-                controlsPanel.classList.remove('collapsed');
-                toggleControlsBtn.textContent = '▼';
-                toggleControlsBtn.title = '收起控制栏';
-            }
-        });
-
-        // 信息面板开关
-        toggleInfoBtn.addEventListener('click', () => {
-            infoCollapsed = !infoCollapsed;
-            if (infoCollapsed) {
-                infoPanel.classList.add('collapsed');
-                toggleInfoBtn.classList.add('visible');
-                toggleInfoBtn.textContent = 'ℹ️';
-                toggleInfoBtn.title = '显示信息';
-            } else {
-                infoPanel.classList.remove('collapsed');
-                toggleInfoBtn.classList.remove('visible');
-            }
-        });
-
-        // 状态面板开关
-        toggleStatusBtn.addEventListener('click', () => {
-            statusCollapsed = !statusCollapsed;
-            if (statusCollapsed) {
-                statusDiv.classList.add('collapsed');
-                toggleStatusBtn.classList.add('visible');
-                toggleStatusBtn.textContent = '📊';
-                toggleStatusBtn.title = '显示状态';
-            } else {
-                statusDiv.classList.remove('collapsed');
-                toggleStatusBtn.classList.remove('visible');
-            }
-        });
-
-        // 一键隐藏所有面板（快捷键 H）
-        function toggleAllPanels() {
-            allHidden = !allHidden;
-            if (allHidden) {
-                // 隐藏所有
-                controlsPanel.classList.add('collapsed');
-                infoPanel.classList.add('collapsed');
-                statusDiv.classList.add('collapsed');
-                toggleControlsBtn.textContent = '▲';
-                toggleControlsBtn.title = '展开控制栏';
-                controlsCollapsed = true;
-                infoCollapsed = true;
-                statusCollapsed = true;
-                // 显示所有展开按钮
-                toggleInfoBtn.classList.add('visible');
-                toggleStatusBtn.classList.add('visible');
-                toggleInfoBtn.textContent = 'ℹ️';
-                toggleStatusBtn.textContent = '📊';
-                setStatus('面板已隐藏 · 按 H 恢复');
-            } else {
-                // 恢复显示
-                controlsPanel.classList.remove('collapsed');
-                infoPanel.classList.remove('collapsed');
-                statusDiv.classList.remove('collapsed');
-                toggleControlsBtn.textContent = '▼';
-                toggleControlsBtn.title = '收起控制栏';
-                controlsCollapsed = false;
-                infoCollapsed = false;
-                statusCollapsed = false;
-                // 隐藏展开按钮
-                toggleInfoBtn.classList.remove('visible');
-                toggleStatusBtn.classList.remove('visible');
-                setStatus('面板已恢复');
-            }
-        }
-
-        // 键盘快捷键
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'h' || e.key === 'H') {
-                // 避免在输入框中触发
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-                toggleAllPanels();
-            }
-        });
-
-        // 初始状态：确保展开按钮在面板隐藏时可见
-        // 当用户点击关闭按钮时，需要把展开按钮显示出来
-        // 修改原来的关闭逻辑：直接关闭面板的同时显示对应的展开按钮
-        // 实际上，上面的 toggleInfoBtn 点击逻辑是：如果 infoCollapsed 为 true，显示展开按钮。
-        // 但我们希望点击信息面板上的"关闭"按钮来关闭它？目前信息面板没有关闭按钮，只能通过展开按钮来切换。
-        // 更好的交互：信息面板本身不包含关闭按钮，而是通过一个独立的展开按钮来控制显示/隐藏。
-        // 所以我们重新组织：
-        // - infoPanel 初始可见，toggleInfoBtn 初始隐藏
-        // - 点击 toggleInfoBtn 显示 infoPanel，同时隐藏自己
-        // - 但如何隐藏 infoPanel？我们需要在 infoPanel 上加一个关闭按钮。
-        // 简化：我们让 infoPanel 点击时自动隐藏？不行。
-        // 修改方案：在 infoPanel 内部右上角加一个小关闭按钮。
-        
-        // 由于时间关系，我采用更简单的方式：点击 toggleInfoBtn 切换 infoPanel 的显示/隐藏。
-        // 同时调整逻辑：初始 infoPanel 可见，toggleInfoBtn 隐藏。
-        // 点击 infoPanel 上的某个隐藏按钮？还是直接用 toggleInfoBtn？
-        // 更简单的：让 infoPanel 本身也可以点击关闭？不合理。
-        // 我直接修改：toggleInfoBtn 始终可见，点击它切换 infoPanel 的可见性。
-        // 同时 infoPanel 初始可见，toggleInfoBtn 显示为 "✕" 表示关闭。
-        // 这样用户就能通过按钮关闭面板了。
-        
-        // 重构面板控制逻辑：
-        // 初始：infoPanel 可见，toggleInfoBtn 显示 "✕"，点击后隐藏 infoPanel，按钮变为 "ℹ️"
-        // 再次点击：显示 infoPanel，按钮变为 "✕"
-        
-        // 重置初始状态
-        infoPanel.classList.remove('collapsed');
-        toggleInfoBtn.classList.remove('visible'); // 初始不显示
-        
-        // 重新绑定事件
-        // 移除之前的事件监听比较复杂，我们直接重新定义这些按钮的行为
-        
-        // 为了简化，我重新初始化：
-        // 清除之前所有监听器（通过替换元素的方式，或者直接重新定义函数）
-        // 由于代码是顺序执行的，我们可以重新绑定：
-        // 但之前的 addEventListener 已经绑定了，我们需要覆盖它们。
-        // 这里用简单的方法：重新获取元素，覆盖 onclick 属性。
-        
-        // 重新定义按钮行为
-        toggleInfoBtn.onclick = () => {
-            infoCollapsed = !infoCollapsed;
-            if (infoCollapsed) {
-                infoPanel.classList.add('collapsed');
-                toggleInfoBtn.classList.add('visible');
-                toggleInfoBtn.textContent = 'ℹ️';
-                toggleInfoBtn.title = '显示信息';
-            } else {
-                infoPanel.classList.remove('collapsed');
-                toggleInfoBtn.classList.remove('visible');
-            }
-        };
-        
-        toggleStatusBtn.onclick = () => {
-            statusCollapsed = !statusCollapsed;
-            if (statusCollapsed) {
-                statusDiv.classList.add('collapsed');
-                toggleStatusBtn.classList.add('visible');
-                toggleStatusBtn.textContent = '📊';
-                toggleStatusBtn.title = '显示状态';
-            } else {
-                statusDiv.classList.remove('collapsed');
-                toggleStatusBtn.classList.remove('visible');
-            }
-        };
-        
         toggleControlsBtn.onclick = () => {
             controlsCollapsed = !controlsCollapsed;
             if (controlsCollapsed) {
@@ -601,83 +497,6 @@
                 toggleControlsBtn.title = '收起控制栏';
             }
         };
-        
-        // 但用户如何关闭 infoPanel？点击 infoPanel 上的关闭按钮？我们还没有。
-        // 为了给用户一个关闭 infoPanel 的途径，我们在 infoPanel 内部添加一个小关闭按钮。
-        // 但 infoPanel 是 pointer-events: none，无法点击。所以我们需要修改 infoPanel 的 pointer-events。
-        // 但 infoPanel 只是信息展示，不应该是可交互的。
-        // 简单方案：点击 toggleInfoBtn 来切换显示/隐藏。
-        // 但初始时 toggleInfoBtn 是隐藏的，用户看不到。所以我们需要初始时让 toggleInfoBtn 可见。
-        
-        // 最终决定：toggleInfoBtn 始终可见，位于 infoPanel 右侧或角落。
-        // 调整 CSS：让 toggleInfoBtn 位于 infoPanel 的右侧偏移位置。
-        // 为了不占用太多时间，我简化处理：
-        // 让 infoPanel 和 status 也可以通过点击自身来隐藏？不行。
-        // 我就用 toggleInfoBtn 来控制，并且让它始终可见，放在 infoPanel 的右侧。
-        
-        // 修改 toggleInfoBtn 的定位
-        // 我们把它放在 infoPanel 的右边缘附近
-        // 在 CSS 中调整 #toggleInfo 的 left 值
-        
-        // 由于代码已经写了，我直接在运行时调整：
-        toggleInfoBtn.style.left = 'calc(40vw + 20px)'; // 根据 infoPanel 宽度调整
-        toggleInfoBtn.style.display = 'flex'; // 始终显示
-        toggleInfoBtn.style.width = '32px';
-        toggleInfoBtn.style.height = '32px';
-        toggleInfoBtn.style.fontSize = '14px';
-        toggleInfoBtn.textContent = '✕';
-        toggleInfoBtn.title = '关闭信息面板';
-        
-        // 重新定义点击行为
-        let infoVisible = true;
-        toggleInfoBtn.onclick = () => {
-            infoVisible = !infoVisible;
-            if (infoVisible) {
-                infoPanel.classList.remove('collapsed');
-                toggleInfoBtn.textContent = '✕';
-                toggleInfoBtn.title = '关闭信息面板';
-            } else {
-                infoPanel.classList.add('collapsed');
-                toggleInfoBtn.textContent = 'ℹ️';
-                toggleInfoBtn.title = '显示信息';
-            }
-        };
-        
-        // 状态面板同理
-        toggleStatusBtn.style.display = 'flex';
-        toggleStatusBtn.style.width = '32px';
-        toggleStatusBtn.style.height = '32px';
-        toggleStatusBtn.style.fontSize = '14px';
-        toggleStatusBtn.textContent = '✕';
-        toggleStatusBtn.title = '关闭状态面板';
-        
-        let statusVisible = true;
-        toggleStatusBtn.onclick = () => {
-            statusVisible = !statusVisible;
-            if (statusVisible) {
-                statusDiv.classList.remove('collapsed');
-                toggleStatusBtn.textContent = '✕';
-                toggleStatusBtn.title = '关闭状态面板';
-            } else {
-                statusDiv.classList.add('collapsed');
-                toggleStatusBtn.textContent = '📊';
-                toggleStatusBtn.title = '显示状态';
-            }
-        };
-        
-        // 底部控制栏开关保持不变，但我们需要确保 toggleControlsBtn 可见
-        toggleControlsBtn.style.display = 'flex';
-        
-        // 处理窗口大小变化时，调整 toggleInfoBtn 位置
-        function updateTogglePositions() {
-            if (infoVisible) {
-                toggleInfoBtn.style.left = 'calc(20px + min(40vw, 500px) + 8px)';
-            } else {
-                toggleInfoBtn.style.left = '20px';
-            }
-        }
-        window.addEventListener('resize', updateTogglePositions);
-        updateTogglePositions();
 
         // --- 场景初始化 ---
         const scene = new THREE.Scene();
@@ -709,11 +528,20 @@
         scene.add(dirLight2);
 
         // 网格
-        const gridHelper = new THREE.GridHelper(10, 20, 0x88aaff, 0x335588);
+        const gridHelper = new THREE.GridHelper(20, 40, 0x88aaff, 0x335588);
         gridHelper.position.y = -1.2;
         gridHelper.material.opacity = 0.15;
         gridHelper.material.transparent = true;
         scene.add(gridHelper);
+
+        // 地面平面（不可见，用于射线检测放置位置）
+        const groundPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(50, 50),
+            new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
+        );
+        groundPlane.rotation.x = -Math.PI / 2;
+        groundPlane.position.y = -1.2;
+        scene.add(groundPlane);
 
         // --- 变量 ---
         let currentModel = null;
@@ -722,6 +550,15 @@
 
         let paintMode = 'color';
         let importedTexture = null;
+
+        // 放置立方体模式
+        let placeMode = false;
+
+        // 所有放置的立方体集合（用于导出时包含它们）
+        let placedCubes = [];
+
+        // 每个立方体的标准尺寸
+        const CUBE_SIZE = 0.8;
 
         // UI 元素
         const colorPicker = document.getElementById('colorPicker');
@@ -732,12 +569,100 @@
         const exportZipBtn = document.getElementById('exportZipBtn');
         const modeColorBtn = document.getElementById('modeColor');
         const modeTextureBtn = document.getElementById('modeTexture');
+        const placeCubeBtn = document.getElementById('placeCubeBtn');
+        const paletteBtn = document.getElementById('paletteBtn');
+        const palettePopup = document.getElementById('palettePopup');
+
+        // --- 调色板功能 ---
+        const PRESET_COLORS = [
+            '#ff0000', '#ff5500', '#ffaa00', '#ffdd00', '#aaff00', '#00ff00',
+            '#00ff88', '#00ffff', '#0088ff', '#0000ff', '#8800ff', '#ff00ff',
+            '#ff0088', '#ffffff', '#cccccc', '#888888', '#444444', '#000000',
+            '#8B4513', '#FFD700', '#FF69B4', '#40E0D0', '#DC143C', '#4B0082'
+        ];
+
+        let selectedSwatchIndex = -1;
+
+        function buildPalette() {
+            palettePopup.innerHTML = '';
+            PRESET_COLORS.forEach((color, idx) => {
+                const swatch = document.createElement('div');
+                swatch.className = 'palette-swatch';
+                swatch.style.background = color;
+                swatch.title = color;
+                const check = document.createElement('span');
+                check.className = 'swatch-check';
+                check.textContent = '✓';
+                swatch.appendChild(check);
+
+                // 判断当前颜色是否匹配
+                if (color.toLowerCase() === colorPicker.value.toLowerCase()) {
+                    swatch.classList.add('selected');
+                    selectedSwatchIndex = idx;
+                }
+
+                swatch.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // 更新颜色选择器
+                    colorPicker.value = color;
+                    // 更新选中状态
+                    document.querySelectorAll('.palette-swatch').forEach(s => s.classList.remove('selected'));
+                    swatch.classList.add('selected');
+                    selectedSwatchIndex = idx;
+                    // 通知颜色变化
+                    updateColorFromPicker(color);
+                    // 关闭调色板
+                    palettePopup.classList.remove('show');
+                });
+
+                palettePopup.appendChild(swatch);
+            });
+        }
+
+        // 更新颜色选择器对应的状态
+        function updateColorFromPicker(color) {
+            // 更新调色板中选中状态
+            document.querySelectorAll('.palette-swatch').forEach((s, i) => {
+                if (PRESET_COLORS[i].toLowerCase() === color.toLowerCase()) {
+                    s.classList.add('selected');
+                } else {
+                    s.classList.remove('selected');
+                }
+            });
+        }
+
+        // 打开/关闭调色板
+        paletteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            palettePopup.classList.toggle('show');
+            if (palettePopup.classList.contains('show')) {
+                buildPalette();
+            }
+        });
+
+        // 点击其他地方关闭调色板
+        document.addEventListener('click', (e) => {
+            if (!palettePopup.contains(e.target) && e.target !== paletteBtn) {
+                palettePopup.classList.remove('show');
+            }
+        });
+
+        // 监听颜色选择器变化
+        colorPicker.addEventListener('input', (e) => {
+            updateColorFromPicker(e.target.value);
+        });
+
+        // 初始化调色板
+        buildPalette();
 
         // --- 模式切换 ---
         modeColorBtn.addEventListener('click', () => {
             paintMode = 'color';
+            placeMode = false;
+            updatePlaceModeUI();
             modeColorBtn.classList.add('active-mode');
             modeTextureBtn.classList.remove('active-mode');
+            placeCubeBtn.classList.remove('active-mode');
             setStatus('已切换到颜色模式');
         });
 
@@ -747,10 +672,45 @@
                 return;
             }
             paintMode = 'texture';
+            placeMode = false;
+            updatePlaceModeUI();
             modeTextureBtn.classList.add('active-mode');
             modeColorBtn.classList.remove('active-mode');
+            placeCubeBtn.classList.remove('active-mode');
             setStatus('已切换到纹理模式 · 点击面贴图');
         });
+
+        // --- 放置立方体模式 ---
+        placeCubeBtn.addEventListener('click', () => {
+            placeMode = !placeMode;
+            updatePlaceModeUI();
+            if (placeMode) {
+                setStatus('放置模式 · 点击场景放置立方体');
+            } else {
+                setStatus('已退出放置模式');
+            }
+        });
+
+        function updatePlaceModeUI() {
+            if (placeMode) {
+                placeCubeBtn.classList.add('active-mode');
+                placeHint.classList.add('show');
+                modeColorBtn.classList.remove('active-mode');
+                modeTextureBtn.classList.remove('active-mode');
+                // 禁用 OrbitControls 的左键旋转，避免冲突？不，保留，只是左键点击如果没拖拽则放置
+            } else {
+                placeCubeBtn.classList.remove('active-mode');
+                placeHint.classList.remove('show');
+                // 恢复之前的模式按钮
+                if (paintMode === 'color') {
+                    modeColorBtn.classList.add('active-mode');
+                    modeTextureBtn.classList.remove('active-mode');
+                } else {
+                    modeTextureBtn.classList.add('active-mode');
+                    modeColorBtn.classList.remove('active-mode');
+                }
+            }
+        }
 
         // --- 导入纹理 ---
         textureInput.addEventListener('change', (e) => {
@@ -775,6 +735,8 @@
                     texturePreview.style.backgroundImage = `url(${ev.target.result})`;
                     texturePreview.classList.add('show');
                     paintMode = 'texture';
+                    placeMode = false;
+                    updatePlaceModeUI();
                     modeTextureBtn.classList.add('active-mode');
                     modeColorBtn.classList.remove('active-mode');
                     setStatus(`纹理已导入: ${img.width}×${img.height} · 点击面贴图`);
@@ -787,31 +749,36 @@
             textureInput.value = '';
         });
 
-        // --- 创建默认模型 ---
-        function createDefaultModel() {
-            const geometry = new THREE.BoxGeometry(2, 2, 2);
+        // --- 创建单个立方体的几何体（非索引，带颜色和UV） ---
+        function createCubeGeometry(size) {
+            const geometry = new THREE.BoxGeometry(size, size, size);
             const nonIndexedGeo = geometry.toNonIndexed();
             geometry.dispose();
 
             const posAttr = nonIndexedGeo.getAttribute('position');
             const vCount = posAttr.count;
 
+            // 颜色属性（默认浅灰）
             const colors = new Float32Array(vCount * 3);
             for (let i = 0; i < vCount; i++) {
                 colors[i*3] = 0.85; colors[i*3+1] = 0.85; colors[i*3+2] = 0.85;
             }
             nonIndexedGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
+            // UV 属性（默认中心）
             const uvs = new Float32Array(vCount * 2);
-            for (let f = 0; f < vCount / 3; f++) {
-                for (let k = 0; k < 3; k++) {
-                    const idx = f * 3 + k;
-                    uvs[idx * 2] = 0.5;
-                    uvs[idx * 2 + 1] = 0.5;
-                }
+            for (let i = 0; i < vCount; i++) {
+                uvs[i*2] = 0.5;
+                uvs[i*2+1] = 0.5;
             }
             nonIndexedGeo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
+            return nonIndexedGeo;
+        }
+
+        // --- 创建默认模型（包含一个立方体）---
+        function createDefaultModel() {
+            const geometry = createCubeGeometry(2);
             const material = new THREE.MeshStandardMaterial({
                 vertexColors: true,
                 flatShading: true,
@@ -819,8 +786,7 @@
                 metalness: 0.1,
                 side: THREE.DoubleSide,
             });
-
-            const cube = new THREE.Mesh(nonIndexedGeo, material);
+            const cube = new THREE.Mesh(geometry, material);
             const group = new THREE.Group();
             group.add(cube);
             return group;
@@ -959,7 +925,7 @@
             return Math.floor(faces);
         }
 
-        // --- 点击涂色/贴图 ---
+        // --- 点击事件：涂色/贴图/放置立方体 ---
         const pointerDownPos = new THREE.Vector2();
         const CLICK_THRESHOLD = 5;
 
@@ -971,12 +937,77 @@
             const dx = e.clientX - pointerDownPos.x;
             const dy = e.clientY - pointerDownPos.y;
             if (Math.sqrt(dx * dx + dy * dy) < CLICK_THRESHOLD) {
-                handlePaint(e);
+                if (placeMode) {
+                    handlePlaceCube(e);
+                } else {
+                    handlePaint(e);
+                }
             }
         });
 
+        // --- 放置立方体 ---
+        function handlePlaceCube(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // 优先检测已有模型和地面
+            const allObjects = [...placedCubes];
+            if (currentModel) {
+                currentModel.traverse(c => {
+                    if (c.isMesh) allObjects.push(c);
+                });
+            }
+            allObjects.push(groundPlane);
+
+            const intersects = raycaster.intersectObjects(allObjects, false);
+
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                const point = hit.point;
+
+                // 在点击位置放置一个新立方体
+                const newCube = createPlacedCube(point);
+                scene.add(newCube);
+                placedCubes.push(newCube);
+
+                setStatus(`已放置立方体 · 当前场景共 ${placedCubes.length} 个`);
+            }
+        }
+
+        function createPlacedCube(position) {
+            const geometry = createCubeGeometry(CUBE_SIZE);
+            const material = new THREE.MeshStandardMaterial({
+                vertexColors: true,
+                flatShading: true,
+                roughness: 0.4,
+                metalness: 0.1,
+                side: THREE.DoubleSide,
+            });
+            const cube = new THREE.Mesh(geometry, material);
+            // 让立方体底部接触点击点
+            cube.position.copy(position);
+            cube.position.y += CUBE_SIZE / 2;
+
+            // 赋予初始颜色（当前选择的颜色）
+            const color = new THREE.Color(colorPicker.value);
+            const colorAttr = geometry.getAttribute('color');
+            const arr = colorAttr.array;
+            for (let i = 0; i < arr.length; i += 3) {
+                arr[i] = color.r;
+                arr[i+1] = color.g;
+                arr[i+2] = color.b;
+            }
+            colorAttr.needsUpdate = true;
+
+            return cube;
+        }
+
+        // --- 涂色/贴图 ---
         function handlePaint(event) {
-            if (!currentModel) return;
+            if (!currentModel && placedCubes.length === 0) return;
 
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -985,9 +1016,12 @@
             raycaster.setFromCamera(mouse, camera);
 
             const meshes = [];
-            currentModel.traverse(child => {
-                if (child.isMesh) meshes.push(child);
-            });
+            if (currentModel) {
+                currentModel.traverse(child => {
+                    if (child.isMesh) meshes.push(child);
+                });
+            }
+            placedCubes.forEach(cube => meshes.push(cube));
 
             const intersects = raycaster.intersectObjects(meshes, false);
 
@@ -1029,7 +1063,7 @@
                     const centerX = (posAttr.getX(startIdx) + posAttr.getX(startIdx+1) + posAttr.getX(startIdx+2)) / 3;
                     const centerY = (posAttr.getY(startIdx) + posAttr.getY(startIdx+1) + posAttr.getY(startIdx+2)) / 3;
                     
-                    const box = new THREE.Box3().setFromObject(currentModel);
+                    const box = new THREE.Box3().setFromObject(mesh);
                     const size = box.getSize(new THREE.Vector3());
                     const min = box.min;
                     
@@ -1066,60 +1100,121 @@
 
         // --- 重置颜色 ---
         resetColorBtn.addEventListener('click', () => {
-            if (!currentModel) return;
-            currentModel.traverse(child => {
-                if (child.isMesh) {
-                    const colorAttr = child.geometry.getAttribute('color');
-                    if (colorAttr) {
-                        const arr = colorAttr.array;
-                        for (let i = 0; i < arr.length; i += 3) {
-                            arr[i] = 0.85; arr[i+1] = 0.85; arr[i+2] = 0.85;
-                        }
-                        colorAttr.needsUpdate = true;
-                    }
-                }
-            });
-            setStatus('颜色已重置');
-        });
-
-        // --- 随机上色 ---
-        randomColorBtn.addEventListener('click', () => {
-            if (!currentModel) return;
-            currentModel.traverse(child => {
-                if (child.isMesh) {
-                    const geometry = child.geometry;
-                    const posAttr = geometry.getAttribute('position');
-                    if (!posAttr) return;
-
-                    let colorAttr = geometry.getAttribute('color');
-                    if (!colorAttr) {
-                        const count = posAttr.count;
-                        const colors = new Float32Array(count * 3);
-                        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-                        colorAttr = geometry.getAttribute('color');
-                        child.material.vertexColors = true;
-                        child.material.needsUpdate = true;
-                    }
-
-                    const arr = colorAttr.array;
-                    for (let i = 0; i < posAttr.count; i += 3) {
-                        const r = Math.random(), g = Math.random(), b = Math.random();
-                        for (let j = 0; j < 3; j++) {
-                            const idx = i + j;
-                            if (idx < posAttr.count) {
-                                arr[idx*3] = r; arr[idx*3+1] = g; arr[idx*3+2] = b;
+            // 重置主模型
+            if (currentModel) {
+                currentModel.traverse(child => {
+                    if (child.isMesh) {
+                        const colorAttr = child.geometry.getAttribute('color');
+                        if (colorAttr) {
+                            const arr = colorAttr.array;
+                            for (let i = 0; i < arr.length; i += 3) {
+                                arr[i] = 0.85; arr[i+1] = 0.85; arr[i+2] = 0.85;
                             }
+                            colorAttr.needsUpdate = true;
                         }
+                    }
+                });
+            }
+            // 重置放置的立方体
+            placedCubes.forEach(cube => {
+                const colorAttr = cube.geometry.getAttribute('color');
+                if (colorAttr) {
+                    const arr = colorAttr.array;
+                    for (let i = 0; i < arr.length; i += 3) {
+                        arr[i] = 0.85; arr[i+1] = 0.85; arr[i+2] = 0.85;
                     }
                     colorAttr.needsUpdate = true;
                 }
             });
+            setStatus('所有颜色已重置');
+        });
+
+        // --- 随机上色 ---
+        randomColorBtn.addEventListener('click', () => {
+            const randomizeMesh = (mesh) => {
+                const geometry = mesh.geometry;
+                const posAttr = geometry.getAttribute('position');
+                if (!posAttr) return;
+
+                let colorAttr = geometry.getAttribute('color');
+                if (!colorAttr) {
+                    const count = posAttr.count;
+                    const colors = new Float32Array(count * 3);
+                    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                    colorAttr = geometry.getAttribute('color');
+                    mesh.material.vertexColors = true;
+                    mesh.material.needsUpdate = true;
+                }
+
+                const arr = colorAttr.array;
+                for (let i = 0; i < posAttr.count; i += 3) {
+                    const r = Math.random(), g = Math.random(), b = Math.random();
+                    for (let j = 0; j < 3; j++) {
+                        const idx = i + j;
+                        if (idx < posAttr.count) {
+                            arr[idx*3] = r; arr[idx*3+1] = g; arr[idx*3+2] = b;
+                        }
+                    }
+                }
+                colorAttr.needsUpdate = true;
+            };
+
+            if (currentModel) {
+                currentModel.traverse(child => {
+                    if (child.isMesh) randomizeMesh(child);
+                });
+            }
+            placedCubes.forEach(cube => randomizeMesh(cube));
             setStatus('随机上色完成');
         });
 
+        // --- 键盘快捷键 ---
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'h' || e.key === 'H') {
+                allHidden = !allHidden;
+                if (allHidden) {
+                    controlsPanel.classList.add('collapsed');
+                    toggleControlsBtn.textContent = '▲';
+                    setStatus('面板已隐藏 · 按 H 恢复');
+                } else {
+                    controlsPanel.classList.remove('collapsed');
+                    toggleControlsBtn.textContent = '▼';
+                    setStatus('面板已恢复');
+                }
+            } else if (e.key === 'p' || e.key === 'P') {
+                placeMode = !placeMode;
+                updatePlaceModeUI();
+                setStatus(placeMode ? '放置模式 · 点击场景放置立方体' : '已退出放置模式');
+            } else if (e.key === 'Escape') {
+                if (placeMode) {
+                    placeMode = false;
+                    updatePlaceModeUI();
+                    setStatus('已取消放置模式');
+                }
+                palettePopup.classList.remove('show');
+            }
+        });
+
+        // --- 收集所有网格（用于导出）---
+        function getAllExportableMeshes() {
+            const meshes = [];
+            if (currentModel) {
+                currentModel.traverse(child => {
+                    if (child.isMesh) meshes.push({ mesh: child, worldMatrix: child.matrixWorld });
+                });
+            }
+            placedCubes.forEach(cube => {
+                meshes.push({ mesh: cube, worldMatrix: cube.matrixWorld });
+            });
+            return meshes;
+        }
+
         // --- 导出 ZIP ---
         exportZipBtn.addEventListener('click', async () => {
-            if (!currentModel) {
+            const meshesInfo = getAllExportableMeshes();
+            if (meshesInfo.length === 0) {
                 setStatus('没有模型可导出', true);
                 return;
             }
@@ -1132,19 +1227,8 @@
             setStatus('正在生成导出文件...');
 
             try {
-                const meshes = [];
-                currentModel.traverse(child => {
-                    if (child.isMesh) meshes.push(child);
-                });
-
-                if (meshes.length === 0) {
-                    setStatus('模型中没有网格', true);
-                    showLoading(false);
-                    return;
-                }
-
                 let totalFaces = 0;
-                meshes.forEach(mesh => {
+                meshesInfo.forEach(({ mesh }) => {
                     const posAttr = mesh.geometry.getAttribute('position');
                     if (posAttr) totalFaces += posAttr.count / 3;
                 });
@@ -1181,7 +1265,9 @@
                 const faceLines = [];
                 let vOffset = 1, vtOffset = 1, vnOffset = 1;
 
-                meshes.forEach(mesh => {
+                // 需要将局部坐标转换到世界坐标，并统一到模型空间
+                // 由于导出时模型位置各不相同，我们使用世界矩阵转换顶点
+                meshesInfo.forEach(({ mesh, worldMatrix }) => {
                     const geometry = mesh.geometry;
                     const posAttr = geometry.getAttribute('position');
                     const normalAttr = geometry.getAttribute('normal');
@@ -1198,13 +1284,22 @@
                     }
                     const uvArray = uvAttr.array;
 
+                    // 应用世界矩阵
+                    const tempVec = new THREE.Vector3();
+                    const tempNormal = new THREE.Vector3();
+                    const normalMatrix = new THREE.Matrix3().getNormalMatrix(worldMatrix);
+
                     for (let i = 0; i < vCount; i++) {
-                        vertexLines.push(`v ${posAttr.getX(i).toFixed(6)} ${posAttr.getY(i).toFixed(6)} ${posAttr.getZ(i).toFixed(6)}`);
+                        tempVec.set(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+                        tempVec.applyMatrix4(worldMatrix);
+                        vertexLines.push(`v ${tempVec.x.toFixed(6)} ${tempVec.y.toFixed(6)} ${tempVec.z.toFixed(6)}`);
                     }
 
                     if (normalAttr) {
                         for (let i = 0; i < vCount; i++) {
-                            normalLines.push(`vn ${normalAttr.getX(i).toFixed(6)} ${normalAttr.getY(i).toFixed(6)} ${normalAttr.getZ(i).toFixed(6)}`);
+                            tempNormal.set(normalAttr.getX(i), normalAttr.getY(i), normalAttr.getZ(i));
+                            tempNormal.applyMatrix3(normalMatrix).normalize();
+                            normalLines.push(`vn ${tempNormal.x.toFixed(6)} ${tempNormal.y.toFixed(6)} ${tempNormal.z.toFixed(6)}`);
                         }
                     }
 
@@ -1312,14 +1407,13 @@ mtllib model.mtl
 
         // --- 初始化 ---
         loadDefaultModel();
-        setStatus('就绪 · 点击面涂色或导入纹理');
+        setStatus('就绪 · 点击面涂色或放置立方体');
 
         // --- 窗口大小 ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            updateTogglePositions();
         });
 
         // --- 动画循环 ---
