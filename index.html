@@ -2,79 +2,103 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>OBJ 上色器 - 调色板 · 放置立方体 · 导出ZIP</title>
     <style>
-        body {
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body {
             margin: 0;
+            padding: 0;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: #111122;
+            width: 100%;
+            height: 100%;
+            overscroll-behavior: none;
+            touch-action: none;
         }
+        canvas { display: block; touch-action: none; }
+
         .panel {
             position: absolute;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             color: white;
-            border-radius: 30px;
+            border-radius: 20px;
             backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             z-index: 10;
             transition: transform 0.3s ease, opacity 0.3s ease;
             border: 1px solid rgba(255,255,255,0.1);
         }
+
+        /* ===== 顶部信息面板 ===== */
         #info {
-            top: 20px;
-            left: 20px;
-            padding: 12px 24px;
-            border-left: 4px solid #ffaa00;
-            font-size: 14px;
+            top: 8px;
+            left: 8px;
+            padding: 6px 12px;
+            border-left: 3px solid #ffaa00;
+            font-size: 11px;
             pointer-events: none;
-            max-width: 40vw;
+            max-width: 55vw;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
+
+        /* ===== 状态面板 ===== */
         #status {
-            top: 20px;
-            right: 20px;
-            padding: 8px 18px;
-            font-size: 12px;
+            top: 8px;
+            right: 8px;
+            padding: 6px 12px;
+            font-size: 10px;
             font-family: monospace;
             border-left: 3px solid #0f0;
             color: #0f0;
-            max-width: 45vw;
+            max-width: 40vw;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             pointer-events: none;
         }
+
+        /* ===== 底部控制栏 ===== */
         #controls {
-            bottom: 25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(30, 30, 40, 0.92);
-            backdrop-filter: blur(10px);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(25, 25, 35, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             color: white;
-            padding: 16px 24px;
-            border-radius: 60px;
+            padding: 8px 10px;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+            border-radius: 20px 20px 0 0;
             display: flex;
-            gap: 18px;
+            gap: 8px;
             align-items: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
+            border-top: 1px solid rgba(255,255,255,0.15);
             z-index: 20;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 96vw;
-            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            transition: transform 0.3s ease;
         }
+        #controls::-webkit-scrollbar { display: none; }
         #controls.collapsed {
-            transform: translateX(-50%) translateY(140%);
-            opacity: 0;
-            pointer-events: none;
+            transform: translateY(110%);
         }
+
+        /* ===== 折叠按钮 ===== */
         .toggle-btn {
-            position: absolute;
+            position: fixed;
             z-index: 30;
-            width: 44px;
-            height: 44px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             background: rgba(30, 30, 40, 0.95);
             color: #ffaa00;
@@ -83,83 +107,78 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            transition: background 0.2s, transform 0.2s, border-color 0.2s;
             padding: 0;
             line-height: 1;
+            transition: transform 0.2s;
         }
-        .toggle-btn:hover {
-            background: rgba(255,170,0,0.2);
-            transform: scale(1.08);
-            border-color: #ffaa00;
-        }
-        .toggle-btn:active {
-            transform: scale(0.95);
-        }
+        .toggle-btn:active { transform: scale(0.9); }
         #toggleControls {
-            bottom: 25px;
-            left: 50%;
-            transform: translateX(-50%);
-            transition: bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            bottom: 14px;
+            right: 14px;
+            transition: bottom 0.3s ease;
         }
+        #toggleControls.shifted {
+            bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+        }
+
+        /* ===== 通用控件 ===== */
         .control-group {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 4px 0;
+            gap: 6px;
+            flex-shrink: 0;
         }
         .control-group label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             color: #bbb;
-            letter-spacing: 0.3px;
             white-space: nowrap;
         }
         input[type="color"] {
-            width: 42px;
-            height: 42px;
+            width: 36px;
+            height: 36px;
             border: 2px solid rgba(255,255,255,0.5);
             border-radius: 50%;
             cursor: pointer;
             background: transparent;
             padding: 2px;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-        input[type="color"]:hover {
-            transform: scale(1.05);
-            border-color: #ffaa00;
+            flex-shrink: 0;
         }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+
         button {
             background: #ffaa00;
             border: none;
             color: #1a1a1a;
-            font-weight: bold;
-            padding: 10px 18px;
-            border-radius: 40px;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 30px;
             cursor: pointer;
-            font-size: 13px;
-            letter-spacing: 0.3px;
-            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-            box-shadow: 0 4px 10px rgba(255,170,0,0.25);
+            font-size: 12px;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 3px 8px rgba(255,170,0,0.25);
             border: 1px solid rgba(255,255,255,0.15);
             white-space: nowrap;
+            flex-shrink: 0;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
-        button:hover {
-            background: #ffbb22;
-            box-shadow: 0 6px 15px rgba(255,170,0,0.45);
-        }
-        button:active { transform: scale(0.96); }
+        button:active { transform: scale(0.94); }
         button.active-mode {
             background: #ff5500;
             color: white;
             box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(255,85,0,0.6);
         }
+
         .file-upload-wrapper {
             position: relative;
             display: inline-block;
+            flex-shrink: 0;
         }
         .file-upload-wrapper input[type="file"] {
             position: absolute;
@@ -172,60 +191,143 @@
             background: #3a3a4a;
             color: white;
             border: 1px solid rgba(255,255,255,0.15);
-            padding: 10px 18px;
-            border-radius: 40px;
-            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 30px;
+            font-size: 12px;
             font-weight: 500;
             cursor: pointer;
-            transition: background 0.2s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             white-space: nowrap;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 36px;
+            flex-shrink: 0;
         }
-        .file-upload-btn:hover { background: #4a4a5a; }
+        .file-upload-btn:active { background: #4a4a5a; }
+
         .export-btn {
             background: #2e8b57;
             color: white;
-            box-shadow: 0 4px 10px rgba(46,139,87,0.3);
-        }
-        .export-btn:hover {
-            background: #3cb371;
-            box-shadow: 0 6px 15px rgba(46,139,87,0.5);
         }
         .place-btn {
             background: #8a2be2;
             color: white;
-            box-shadow: 0 4px 10px rgba(138,43,226,0.3);
         }
-        .place-btn:hover {
-            background: #9b4aea;
-            box-shadow: 0 6px 15px rgba(138,43,226,0.5);
+
+        /* ===== 模式切换 ===== */
+        .mode-switch {
+            display: flex;
+            background: #1e1e2a;
+            border-radius: 30px;
+            padding: 2px;
+            border: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+            height: 36px;
+            align-items: center;
         }
-        .place-btn.active-mode {
-            background: #6a1b9a;
-            box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(138,43,226,0.6);
+        .mode-switch button {
+            background: transparent;
+            box-shadow: none;
+            color: #aaa;
+            padding: 6px 10px;
+            font-size: 11px;
+            border-radius: 25px;
+            height: 30px;
+            min-width: auto;
         }
-        #loading {
+        .mode-switch button.active-mode {
+            background: #ff5500;
+            color: white;
+            box-shadow: 0 2px 8px rgba(255,85,0,0.5);
+        }
+
+        /* ===== 调色板 ===== */
+        .palette-wrapper {
+            position: relative;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        #paletteBtn {
+            background: #3a3a4a;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.15);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 16px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        #palettePopup {
+            position: fixed;
+            bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(25, 25, 35, 0.98);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 10px;
+            display: none;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.15);
+            z-index: 40;
+            width: min(320px, 92vw);
+        }
+        #palettePopup.show { display: grid; }
+        .palette-swatch {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2);
+            position: relative;
+            transition: transform 0.15s;
+        }
+        .palette-swatch:active { transform: scale(1.15); }
+        .palette-swatch.selected {
+            border-color: #ffaa00;
+            box-shadow: 0 0 0 2px #ffaa00;
+        }
+        .palette-swatch .swatch-check {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+            text-shadow: 0 0 4px black, 0 0 4px black;
+            display: none;
+        }
+        .palette-swatch.selected .swatch-check { display: block; }
+
+        /* ===== 加载提示 ===== */
+        #loading {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
             color: #ffaa00;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             z-index: 100;
-            background: rgba(0,0,0,0.85);
-            padding: 20px 40px;
+            background: rgba(0,0,0,0.9);
+            padding: 16px 32px;
             border-radius: 12px;
             pointer-events: none;
             display: none;
         }
+
+        /* ===== 纹理预览 ===== */
         #texturePreview {
-            position: absolute;
-            bottom: 110px;
-            left: 20px;
-            width: 110px;
-            height: 110px;
-            border-radius: 12px;
+            position: fixed;
+            bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+            left: 10px;
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
             border: 2px solid rgba(255,255,255,0.3);
             background: rgba(0,0,0,0.5);
             background-size: cover;
@@ -236,214 +338,166 @@
             pointer-events: none;
         }
         #texturePreview.show { display: block; }
-        #texturePreview::after {
-            content: '纹理预览';
-            position: absolute;
-            bottom: -22px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 11px;
-            color: #aaa;
-            white-space: nowrap;
-        }
-        .mode-switch {
-            display: flex;
-            background: #1e1e2a;
-            border-radius: 30px;
-            padding: 3px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .mode-switch button {
-            background: transparent;
-            box-shadow: none;
-            color: #aaa;
-            padding: 8px 14px;
-            font-size: 12px;
-            border-radius: 25px;
-        }
-        .mode-switch button.active-mode {
-            background: #ff5500;
-            color: white;
-            box-shadow: 0 2px 8px rgba(255,85,0,0.5);
-        }
-        .mode-switch button:hover {
-            background: rgba(255,255,255,0.1);
-        }
-        .mode-switch button.active-mode:hover {
-            background: #ff5500;
-        }
-        /* 调色板 */
-        .palette-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-        #paletteBtn {
-            background: #3a3a4a;
-            color: white;
-            border: 1px solid rgba(255,255,255,0.15);
-            padding: 10px 14px;
-            border-radius: 40px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.2s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        #paletteBtn:hover { background: #4a4a5a; }
-        #palettePopup {
-            position: absolute;
-            bottom: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(25, 25, 35, 0.98);
-            backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 12px;
-            display: none;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 8px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-            border: 1px solid rgba(255,255,255,0.15);
-            z-index: 40;
-            width: 280px;
-        }
-        #palettePopup.show { display: grid; }
-        .palette-swatch {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 2px solid rgba(255,255,255,0.2);
-            transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
-            position: relative;
-        }
-        .palette-swatch:hover {
-            transform: scale(1.15);
-            border-color: #fff;
-            box-shadow: 0 0 10px rgba(255,255,255,0.5);
-            z-index: 2;
-        }
-        .palette-swatch.selected {
-            border-color: #ffaa00;
-            box-shadow: 0 0 0 2px #ffaa00, 0 0 12px rgba(255,170,0,0.6);
-            transform: scale(1.1);
-        }
-        .palette-swatch .swatch-check {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 16px;
-            text-shadow: 0 0 4px black, 0 0 4px black;
-            display: none;
-            pointer-events: none;
-        }
-        .palette-swatch.selected .swatch-check { display: block; }
-        /* 放置立方体提示 */
+
+        /* ===== 放置提示 ===== */
         #placeHint {
-            position: absolute;
-            top: 50%;
+            position: fixed;
+            top: 15%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%);
             background: rgba(138,43,226,0.9);
             color: white;
-            padding: 14px 28px;
-            border-radius: 30px;
-            font-size: 15px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 13px;
             font-weight: bold;
             z-index: 50;
             pointer-events: none;
             display: none;
             box-shadow: 0 4px 20px rgba(138,43,226,0.6);
             border: 2px solid rgba(255,255,255,0.3);
-            animation: pulse 1.5s infinite;
+            white-space: nowrap;
         }
         #placeHint.show { display: block; }
-        @keyframes pulse {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.05); }
+
+        /* ===== 桌面端增强 ===== */
+        @media (min-width: 769px) {
+            #info {
+                top: 20px;
+                left: 20px;
+                padding: 12px 24px;
+                font-size: 14px;
+                max-width: 40vw;
+            }
+            #status {
+                top: 20px;
+                right: 20px;
+                padding: 8px 18px;
+                font-size: 12px;
+                max-width: 45vw;
+            }
+            #controls {
+                position: absolute;
+                bottom: 25px;
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+                padding: 16px 24px;
+                border-radius: 60px;
+                gap: 18px;
+                flex-wrap: wrap;
+                justify-content: center;
+                max-width: 96vw;
+                overflow-x: visible;
+                border: 1px solid rgba(255,255,255,0.15);
+            }
+            #controls.collapsed {
+                transform: translateX(-50%) translateY(140%);
+                opacity: 0;
+                pointer-events: none;
+            }
+            #toggleControls {
+                bottom: 25px;
+                right: auto;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            #toggleControls.shifted {
+                bottom: 25px;
+            }
+            button {
+                padding: 10px 18px;
+                font-size: 13px;
+                height: auto;
+            }
+            .mode-switch button {
+                padding: 8px 14px;
+                font-size: 12px;
+                height: auto;
+            }
+            #paletteBtn {
+                width: 42px;
+                height: 42px;
+            }
+            #palettePopup {
+                bottom: 80px;
+                width: 300px;
+                grid-template-columns: repeat(6, 1fr);
+            }
+            input[type="color"] {
+                width: 42px;
+                height: 42px;
+            }
+            .file-upload-btn {
+                height: auto;
+                padding: 10px 18px;
+                font-size: 13px;
+            }
+            #texturePreview {
+                bottom: 110px;
+                left: 20px;
+                width: 100px;
+                height: 100px;
+            }
+            #placeHint {
+                top: 50%;
+                font-size: 15px;
+                padding: 14px 28px;
+            }
         }
-        #hint {
-            position: absolute;
-            bottom: 100px;
-            right: 20px;
-            color: #888;
-            font-size: 11px;
-            z-index: 5;
-            pointer-events: none;
-            text-align: right;
-            line-height: 1.6;
-            opacity: 0.7;
-        }
-        @media (max-width: 1000px) {
-            #controls { flex-direction: column; padding: 15px; border-radius: 30px; gap: 10px; }
-            .control-group { flex-wrap: wrap; justify-content: center; }
-            #info { font-size: 12px; padding: 8px 14px; max-width: 60vw; }
-            #status { font-size: 11px; max-width: 55vw; }
-            button { padding: 8px 14px; font-size: 12px; }
-            #texturePreview { width: 80px; height: 80px; bottom: 130px; }
-            #hint { display: none; }
-            #toggleControls { width: 40px; height: 40px; font-size: 18px; }
-            #palettePopup { width: 240px; grid-template-columns: repeat(5, 1fr); }
+
+        /* ===== 超小屏 ===== */
+        @media (max-width: 360px) {
+            #info { font-size: 10px; max-width: 45vw; }
+            #status { font-size: 9px; max-width: 40vw; }
+            button { padding: 7px 12px; font-size: 11px; }
+            .mode-switch button { padding: 5px 8px; font-size: 10px; }
         }
     </style>
 </head>
 <body>
-    <div id="info" class="panel">
-        🎨 OBJ 上色器 · 调色板 · 放置立方体 · 导出ZIP
-    </div>
-
+    <div id="info" class="panel">🎨 OBJ 上色器 · 点击面涂色</div>
     <div id="status" class="panel">初始化中...</div>
 
     <div id="texturePreview"></div>
     <div id="loading">⏳ 处理中...</div>
-    <div id="placeHint">🖱️ 点击场景放置立方体 · 按 ESC 取消</div>
+    <div id="placeHint">🖱️ 点击场景放置 · ESC 取消</div>
 
     <div id="controls">
-        <!-- 模式切换 -->
         <div class="mode-switch">
-            <button id="modeColor" class="active-mode" title="用颜色涂面">🎨 颜色</button>
-            <button id="modeTexture" title="用纹理贴面">🖼️ 纹理</button>
+            <button id="modeColor" class="active-mode">🎨 颜色</button>
+            <button id="modeTexture">🖼️ 纹理</button>
         </div>
 
-        <!-- 颜色选择 + 调色板 -->
         <div class="control-group">
-            <label>颜色</label>
             <input type="color" id="colorPicker" value="#ff5500">
             <div class="palette-wrapper">
-                <button id="paletteBtn" title="打开调色板">🎨</button>
+                <button id="paletteBtn" title="调色板">🎨</button>
                 <div id="palettePopup"></div>
             </div>
         </div>
         
         <div class="file-upload-wrapper">
-            <button class="file-upload-btn">📂 上传 OBJ</button>
+            <button class="file-upload-btn">📂 OBJ</button>
             <input type="file" id="fileInput" accept=".obj">
         </div>
 
         <div class="file-upload-wrapper">
-            <button class="file-upload-btn" style="background:#4a6a8a;">🖼️ 导入纹理</button>
+            <button class="file-upload-btn" style="background:#4a6a8a;">🖼️ 纹理</button>
             <input type="file" id="textureInput" accept="image/*">
         </div>
 
-        <div class="control-group">
-            <button id="placeCubeBtn" class="place-btn" title="进入放置模式">🧊 放置立方体</button>
-            <button id="resetColorBtn">🔄 重置</button>
-            <button id="randomColorBtn">🎲 随机</button>
-            <button id="exportZipBtn" class="export-btn">📦 导出 ZIP</button>
-        </div>
+        <button id="placeCubeBtn" class="place-btn">🧊 放置</button>
+        <button id="resetColorBtn">🔄 重置</button>
+        <button id="randomColorBtn">🎲 随机</button>
+        <button id="exportZipBtn" class="export-btn">📦 导出</button>
     </div>
-    <button id="toggleControls" class="toggle-btn" title="收起/展开控制栏">▼</button>
+    <button id="toggleControls" class="toggle-btn" title="收起/展开">▼</button>
 
-    <div id="hint">
-        快捷键：[H] 隐藏/显示面板 · [P] 放置模式 · [ESC] 取消<br>
-        拖拽旋转 · 滚轮缩放 · 点击面涂色
-    </div>
-
-    <!-- 全局加载 JSZip 和 FileSaver -->
+    <!-- 全局库 -->
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
-    <!-- Three.js importmap -->
     <script type="importmap">
     {
         "imports": {
@@ -461,10 +515,7 @@
         const JSZip = window.JSZip;
         const saveAs = window.saveAs;
 
-        if (!JSZip) console.error('JSZip 未加载');
-        if (!saveAs) console.error('FileSaver 未加载');
-
-        // --- UI 元素 ---
+        // --- UI ---
         const statusDiv = document.getElementById('status');
         const loadingDiv = document.getElementById('loading');
         const texturePreview = document.getElementById('texturePreview');
@@ -481,24 +532,22 @@
             loadingDiv.style.display = show ? 'block' : 'none';
         }
 
-        // --- 面板折叠 ---
+        // --- 控制栏折叠 ---
         let controlsCollapsed = false;
-        let allHidden = false;
-
-        toggleControlsBtn.onclick = () => {
+        toggleControlsBtn.addEventListener('click', () => {
             controlsCollapsed = !controlsCollapsed;
             if (controlsCollapsed) {
                 controlsPanel.classList.add('collapsed');
                 toggleControlsBtn.textContent = '▲';
-                toggleControlsBtn.title = '展开控制栏';
+                toggleControlsBtn.classList.add('shifted');
             } else {
                 controlsPanel.classList.remove('collapsed');
                 toggleControlsBtn.textContent = '▼';
-                toggleControlsBtn.title = '收起控制栏';
+                toggleControlsBtn.classList.remove('shifted');
             }
-        };
+        });
 
-        // --- 场景初始化 ---
+        // --- 场景 ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x111122);
         scene.fog = new THREE.FogExp2(0x111122, 0.02);
@@ -508,15 +557,19 @@
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.body.appendChild(renderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
+        controls.dampingFactor = 0.08;
         controls.screenSpacePanning = true;
         controls.maxDistance = 30;
         controls.minDistance = 0.5;
+        controls.enablePan = true;
+        controls.panSpeed = 0.8;
+        controls.rotateSpeed = 0.8;
+        controls.zoomSpeed = 0.8;
 
         // 光照
         scene.add(new THREE.AmbientLight(0x505070));
@@ -534,7 +587,7 @@
         gridHelper.material.transparent = true;
         scene.add(gridHelper);
 
-        // 地面平面（不可见，用于射线检测放置位置）
+        // 地面
         const groundPlane = new THREE.Mesh(
             new THREE.PlaneGeometry(50, 50),
             new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })
@@ -550,17 +603,11 @@
 
         let paintMode = 'color';
         let importedTexture = null;
-
-        // 放置立方体模式
         let placeMode = false;
-
-        // 所有放置的立方体集合（用于导出时包含它们）
         let placedCubes = [];
-
-        // 每个立方体的标准尺寸
         const CUBE_SIZE = 0.8;
 
-        // UI 元素
+        // UI
         const colorPicker = document.getElementById('colorPicker');
         const fileInput = document.getElementById('fileInput');
         const textureInput = document.getElementById('textureInput');
@@ -573,7 +620,7 @@
         const paletteBtn = document.getElementById('paletteBtn');
         const palettePopup = document.getElementById('palettePopup');
 
-        // --- 调色板功能 ---
+        // --- 调色板 ---
         const PRESET_COLORS = [
             '#ff0000', '#ff5500', '#ffaa00', '#ffdd00', '#aaff00', '#00ff00',
             '#00ff88', '#00ffff', '#0088ff', '#0000ff', '#8800ff', '#ff00ff',
@@ -581,78 +628,49 @@
             '#8B4513', '#FFD700', '#FF69B4', '#40E0D0', '#DC143C', '#4B0082'
         ];
 
-        let selectedSwatchIndex = -1;
-
         function buildPalette() {
             palettePopup.innerHTML = '';
-            PRESET_COLORS.forEach((color, idx) => {
+            PRESET_COLORS.forEach((color) => {
                 const swatch = document.createElement('div');
                 swatch.className = 'palette-swatch';
                 swatch.style.background = color;
-                swatch.title = color;
+                if (color.toLowerCase() === colorPicker.value.toLowerCase()) {
+                    swatch.classList.add('selected');
+                }
                 const check = document.createElement('span');
                 check.className = 'swatch-check';
                 check.textContent = '✓';
                 swatch.appendChild(check);
 
-                // 判断当前颜色是否匹配
-                if (color.toLowerCase() === colorPicker.value.toLowerCase()) {
-                    swatch.classList.add('selected');
-                    selectedSwatchIndex = idx;
-                }
-
                 swatch.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    // 更新颜色选择器
                     colorPicker.value = color;
-                    // 更新选中状态
                     document.querySelectorAll('.palette-swatch').forEach(s => s.classList.remove('selected'));
                     swatch.classList.add('selected');
-                    selectedSwatchIndex = idx;
-                    // 通知颜色变化
-                    updateColorFromPicker(color);
-                    // 关闭调色板
                     palettePopup.classList.remove('show');
                 });
-
                 palettePopup.appendChild(swatch);
             });
         }
 
-        // 更新颜色选择器对应的状态
-        function updateColorFromPicker(color) {
-            // 更新调色板中选中状态
-            document.querySelectorAll('.palette-swatch').forEach((s, i) => {
-                if (PRESET_COLORS[i].toLowerCase() === color.toLowerCase()) {
-                    s.classList.add('selected');
-                } else {
-                    s.classList.remove('selected');
-                }
-            });
-        }
-
-        // 打开/关闭调色板
         paletteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             palettePopup.classList.toggle('show');
-            if (palettePopup.classList.contains('show')) {
-                buildPalette();
-            }
+            if (palettePopup.classList.contains('show')) buildPalette();
         });
 
-        // 点击其他地方关闭调色板
         document.addEventListener('click', (e) => {
             if (!palettePopup.contains(e.target) && e.target !== paletteBtn) {
                 palettePopup.classList.remove('show');
             }
         });
 
-        // 监听颜色选择器变化
         colorPicker.addEventListener('input', (e) => {
-            updateColorFromPicker(e.target.value);
+            document.querySelectorAll('.palette-swatch').forEach((s, i) => {
+                s.classList.toggle('selected', PRESET_COLORS[i].toLowerCase() === e.target.value.toLowerCase());
+            });
         });
 
-        // 初始化调色板
         buildPalette();
 
         // --- 模式切换 ---
@@ -662,13 +680,12 @@
             updatePlaceModeUI();
             modeColorBtn.classList.add('active-mode');
             modeTextureBtn.classList.remove('active-mode');
-            placeCubeBtn.classList.remove('active-mode');
-            setStatus('已切换到颜色模式');
+            setStatus('颜色模式');
         });
 
         modeTextureBtn.addEventListener('click', () => {
             if (!importedTexture) {
-                setStatus('请先导入一张纹理图片', true);
+                setStatus('请先导入纹理图片', true);
                 return;
             }
             paintMode = 'texture';
@@ -676,19 +693,13 @@
             updatePlaceModeUI();
             modeTextureBtn.classList.add('active-mode');
             modeColorBtn.classList.remove('active-mode');
-            placeCubeBtn.classList.remove('active-mode');
-            setStatus('已切换到纹理模式 · 点击面贴图');
+            setStatus('纹理模式 · 点击面贴图');
         });
 
-        // --- 放置立方体模式 ---
         placeCubeBtn.addEventListener('click', () => {
             placeMode = !placeMode;
             updatePlaceModeUI();
-            if (placeMode) {
-                setStatus('放置模式 · 点击场景放置立方体');
-            } else {
-                setStatus('已退出放置模式');
-            }
+            setStatus(placeMode ? '放置模式 · 点击场景放置' : '已退出放置模式');
         });
 
         function updatePlaceModeUI() {
@@ -697,31 +708,25 @@
                 placeHint.classList.add('show');
                 modeColorBtn.classList.remove('active-mode');
                 modeTextureBtn.classList.remove('active-mode');
-                // 禁用 OrbitControls 的左键旋转，避免冲突？不，保留，只是左键点击如果没拖拽则放置
             } else {
                 placeCubeBtn.classList.remove('active-mode');
                 placeHint.classList.remove('show');
-                // 恢复之前的模式按钮
                 if (paintMode === 'color') {
                     modeColorBtn.classList.add('active-mode');
-                    modeTextureBtn.classList.remove('active-mode');
                 } else {
                     modeTextureBtn.classList.add('active-mode');
-                    modeColorBtn.classList.remove('active-mode');
                 }
             }
         }
 
-        // --- 导入纹理 ---
+        // --- 纹理导入 ---
         textureInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             if (!file.type.startsWith('image/')) {
                 setStatus('请选择图片文件', true);
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const img = new Image();
@@ -737,9 +742,7 @@
                     paintMode = 'texture';
                     placeMode = false;
                     updatePlaceModeUI();
-                    modeTextureBtn.classList.add('active-mode');
-                    modeColorBtn.classList.remove('active-mode');
-                    setStatus(`纹理已导入: ${img.width}×${img.height} · 点击面贴图`);
+                    setStatus(`纹理已导入 ${img.width}×${img.height}`);
                 };
                 img.onerror = () => setStatus('图片加载失败', true);
                 img.src = ev.target.result;
@@ -749,7 +752,7 @@
             textureInput.value = '';
         });
 
-        // --- 创建单个立方体的几何体（非索引，带颜色和UV） ---
+        // --- 立方体几何 ---
         function createCubeGeometry(size) {
             const geometry = new THREE.BoxGeometry(size, size, size);
             const nonIndexedGeo = geometry.toNonIndexed();
@@ -758,25 +761,21 @@
             const posAttr = nonIndexedGeo.getAttribute('position');
             const vCount = posAttr.count;
 
-            // 颜色属性（默认浅灰）
             const colors = new Float32Array(vCount * 3);
             for (let i = 0; i < vCount; i++) {
                 colors[i*3] = 0.85; colors[i*3+1] = 0.85; colors[i*3+2] = 0.85;
             }
             nonIndexedGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-            // UV 属性（默认中心）
             const uvs = new Float32Array(vCount * 2);
             for (let i = 0; i < vCount; i++) {
-                uvs[i*2] = 0.5;
-                uvs[i*2+1] = 0.5;
+                uvs[i*2] = 0.5; uvs[i*2+1] = 0.5;
             }
             nonIndexedGeo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
             return nonIndexedGeo;
         }
 
-        // --- 创建默认模型（包含一个立方体）---
         function createDefaultModel() {
             const geometry = createCubeGeometry(2);
             const material = new THREE.MeshStandardMaterial({
@@ -810,23 +809,21 @@
             }
             currentModel = createDefaultModel();
             scene.add(currentModel);
-            setStatus('默认立方体已加载 · 点击面涂色');
+            setStatus('默认立方体已加载');
         }
 
-        // --- 上传 OBJ ---
+        // --- OBJ 上传 ---
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
-
             showLoading(true);
-            setStatus('正在加载 OBJ...');
+            setStatus('加载 OBJ...');
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    const contents = e.target.result;
                     const loader = new OBJLoader();
-                    const obj = loader.parse(contents);
+                    const obj = loader.parse(e.target.result);
 
                     obj.traverse((child) => {
                         if (child.isMesh) {
@@ -836,7 +833,6 @@
                                 geometry.dispose();
                                 geometry = newGeo;
                             }
-
                             const posAttr = geometry.getAttribute('position');
                             if (!posAttr) return;
                             const vCount = posAttr.count;
@@ -848,26 +844,22 @@
                                 }
                                 geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
                             }
-
                             if (!geometry.getAttribute('uv')) {
                                 const uvs = new Float32Array(vCount * 2);
                                 for (let i = 0; i < vCount; i++) {
-                                    uvs[i*2] = 0.5;
-                                    uvs[i*2+1] = 0.5;
+                                    uvs[i*2] = 0.5; uvs[i*2+1] = 0.5;
                                 }
                                 geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
                             }
 
-                            const newMaterial = new THREE.MeshStandardMaterial({
+                            child.geometry = geometry;
+                            child.material = new THREE.MeshStandardMaterial({
                                 vertexColors: true,
                                 flatShading: true,
                                 roughness: 0.5,
                                 metalness: 0.1,
                                 side: THREE.DoubleSide,
                             });
-
-                            child.geometry = geometry;
-                            child.material = newMaterial;
                         }
                     });
 
@@ -879,33 +871,32 @@
                     const box = new THREE.Box3().setFromObject(obj);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
-
                     obj.position.x = -center.x;
                     obj.position.y = -center.y;
                     obj.position.z = -center.z;
 
                     const maxDim = Math.max(size.x, size.y, size.z);
                     if (maxDim > 0) {
-                        const distance = maxDim * 1.8;
-                        camera.position.set(distance * 0.8, distance * 0.6, distance);
+                        const distance = maxDim * 2.0;
+                        // 根据屏幕宽高比调整
+                        const aspect = window.innerWidth / window.innerHeight;
+                        const angle = aspect < 1 ? 1.2 : 0.8;
+                        camera.position.set(distance * angle, distance * 0.7, distance);
                         controls.target.set(0, 0, 0);
                         controls.update();
                     }
 
                     currentModel = obj;
                     scene.add(obj);
-                    setStatus(`已加载: ${file.name} | 面数: ${countFaces(obj)}`);
+                    setStatus(`已加载 | 面数: ${countFaces(obj)}`);
                 } catch (error) {
                     console.error(error);
-                    setStatus('OBJ 解析失败: ' + error.message, true);
+                    setStatus('OBJ 解析失败', true);
                 } finally {
                     showLoading(false);
                 }
             };
-            reader.onerror = () => {
-                setStatus('文件读取失败', true);
-                showLoading(false);
-            };
+            reader.onerror = () => { setStatus('读取失败', true); showLoading(false); };
             reader.readAsText(file);
             fileInput.value = '';
         });
@@ -925,9 +916,9 @@
             return Math.floor(faces);
         }
 
-        // --- 点击事件：涂色/贴图/放置立方体 ---
+        // --- 点击处理 ---
         const pointerDownPos = new THREE.Vector2();
-        const CLICK_THRESHOLD = 5;
+        const CLICK_THRESHOLD = 8; // 移动端放宽一点
 
         renderer.domElement.addEventListener('pointerdown', (e) => {
             pointerDownPos.set(e.clientX, e.clientY);
@@ -945,35 +936,25 @@
             }
         });
 
-        // --- 放置立方体 ---
         function handlePlaceCube(event) {
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
             raycaster.setFromCamera(mouse, camera);
 
-            // 优先检测已有模型和地面
             const allObjects = [...placedCubes];
             if (currentModel) {
-                currentModel.traverse(c => {
-                    if (c.isMesh) allObjects.push(c);
-                });
+                currentModel.traverse(c => { if (c.isMesh) allObjects.push(c); });
             }
             allObjects.push(groundPlane);
 
             const intersects = raycaster.intersectObjects(allObjects, false);
-
             if (intersects.length > 0) {
-                const hit = intersects[0];
-                const point = hit.point;
-
-                // 在点击位置放置一个新立方体
+                const point = intersects[0].point;
                 const newCube = createPlacedCube(point);
                 scene.add(newCube);
                 placedCubes.push(newCube);
-
-                setStatus(`已放置立方体 · 当前场景共 ${placedCubes.length} 个`);
+                setStatus(`已放置 · 共 ${placedCubes.length} 个`);
             }
         }
 
@@ -987,44 +968,34 @@
                 side: THREE.DoubleSide,
             });
             const cube = new THREE.Mesh(geometry, material);
-            // 让立方体底部接触点击点
             cube.position.copy(position);
             cube.position.y += CUBE_SIZE / 2;
 
-            // 赋予初始颜色（当前选择的颜色）
             const color = new THREE.Color(colorPicker.value);
             const colorAttr = geometry.getAttribute('color');
             const arr = colorAttr.array;
             for (let i = 0; i < arr.length; i += 3) {
-                arr[i] = color.r;
-                arr[i+1] = color.g;
-                arr[i+2] = color.b;
+                arr[i] = color.r; arr[i+1] = color.g; arr[i+2] = color.b;
             }
             colorAttr.needsUpdate = true;
-
             return cube;
         }
 
-        // --- 涂色/贴图 ---
         function handlePaint(event) {
             if (!currentModel && placedCubes.length === 0) return;
 
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
             raycaster.setFromCamera(mouse, camera);
 
             const meshes = [];
             if (currentModel) {
-                currentModel.traverse(child => {
-                    if (child.isMesh) meshes.push(child);
-                });
+                currentModel.traverse(child => { if (child.isMesh) meshes.push(child); });
             }
             placedCubes.forEach(cube => meshes.push(cube));
 
             const intersects = raycaster.intersectObjects(meshes, false);
-
             if (intersects.length > 0) {
                 const intersect = intersects[0];
                 const mesh = intersect.object;
@@ -1051,73 +1022,47 @@
 
                 if (paintMode === 'color') {
                     const color = new THREE.Color(colorPicker.value);
-                    const colorArray = colorAttr.array;
+                    const arr = colorAttr.array;
                     for (let i = startIdx; i < startIdx + 3; i++) {
-                        colorArray[i*3] = color.r;
-                        colorArray[i*3+1] = color.g;
-                        colorArray[i*3+2] = color.b;
+                        arr[i*3] = color.r; arr[i*3+1] = color.g; arr[i*3+2] = color.b;
                     }
                     colorAttr.needsUpdate = true;
-                    setStatus(`已涂色: 面 #${faceIndex}`);
+                    setStatus(`涂色 面#${faceIndex}`);
                 } else if (paintMode === 'texture' && importedTexture) {
                     const centerX = (posAttr.getX(startIdx) + posAttr.getX(startIdx+1) + posAttr.getX(startIdx+2)) / 3;
                     const centerY = (posAttr.getY(startIdx) + posAttr.getY(startIdx+1) + posAttr.getY(startIdx+2)) / 3;
-                    
                     const box = new THREE.Box3().setFromObject(mesh);
                     const size = box.getSize(new THREE.Vector3());
                     const min = box.min;
-                    
                     let u = (centerX - min.x) / (size.x || 1);
                     let v = (centerY - min.y) / (size.y || 1);
                     u = Math.max(0, Math.min(1, u));
                     v = Math.max(0, Math.min(1, v));
-                    
+
                     const canvas = document.createElement('canvas');
-                    canvas.width = 1;
-                    canvas.height = 1;
+                    canvas.width = 1; canvas.height = 1;
                     const ctx = canvas.getContext('2d');
                     const img = importedTexture.image;
                     const sx = Math.floor(u * img.width);
                     const sy = Math.floor((1 - v) * img.height);
-                    
                     ctx.drawImage(img, sx, sy, 1, 1, 0, 0, 1, 1);
                     const pixel = ctx.getImageData(0, 0, 1, 1).data;
-                    const r = pixel[0] / 255;
-                    const g = pixel[1] / 255;
-                    const b = pixel[2] / 255;
-                    
-                    const colorArray = colorAttr.array;
+                    const r = pixel[0]/255, g = pixel[1]/255, b = pixel[2]/255;
+
+                    const arr = colorAttr.array;
                     for (let i = startIdx; i < startIdx + 3; i++) {
-                        colorArray[i*3] = r;
-                        colorArray[i*3+1] = g;
-                        colorArray[i*3+2] = b;
+                        arr[i*3] = r; arr[i*3+1] = g; arr[i*3+2] = b;
                     }
                     colorAttr.needsUpdate = true;
-                    setStatus(`已贴图: 面 #${faceIndex}`);
+                    setStatus(`贴图 面#${faceIndex}`);
                 }
             }
         }
 
-        // --- 重置颜色 ---
+        // --- 重置 ---
         resetColorBtn.addEventListener('click', () => {
-            // 重置主模型
-            if (currentModel) {
-                currentModel.traverse(child => {
-                    if (child.isMesh) {
-                        const colorAttr = child.geometry.getAttribute('color');
-                        if (colorAttr) {
-                            const arr = colorAttr.array;
-                            for (let i = 0; i < arr.length; i += 3) {
-                                arr[i] = 0.85; arr[i+1] = 0.85; arr[i+2] = 0.85;
-                            }
-                            colorAttr.needsUpdate = true;
-                        }
-                    }
-                });
-            }
-            // 重置放置的立方体
-            placedCubes.forEach(cube => {
-                const colorAttr = cube.geometry.getAttribute('color');
+            const resetMesh = (mesh) => {
+                const colorAttr = mesh.geometry.getAttribute('color');
                 if (colorAttr) {
                     const arr = colorAttr.array;
                     for (let i = 0; i < arr.length; i += 3) {
@@ -1125,17 +1070,18 @@
                     }
                     colorAttr.needsUpdate = true;
                 }
-            });
-            setStatus('所有颜色已重置');
+            };
+            if (currentModel) currentModel.traverse(c => { if (c.isMesh) resetMesh(c); });
+            placedCubes.forEach(resetMesh);
+            setStatus('颜色已重置');
         });
 
-        // --- 随机上色 ---
+        // --- 随机 ---
         randomColorBtn.addEventListener('click', () => {
             const randomizeMesh = (mesh) => {
                 const geometry = mesh.geometry;
                 const posAttr = geometry.getAttribute('position');
                 if (!posAttr) return;
-
                 let colorAttr = geometry.getAttribute('color');
                 if (!colorAttr) {
                     const count = posAttr.count;
@@ -1145,7 +1091,6 @@
                     mesh.material.vertexColors = true;
                     mesh.material.needsUpdate = true;
                 }
-
                 const arr = colorAttr.array;
                 for (let i = 0; i < posAttr.count; i += 3) {
                     const r = Math.random(), g = Math.random(), b = Math.random();
@@ -1158,46 +1103,25 @@
                 }
                 colorAttr.needsUpdate = true;
             };
-
-            if (currentModel) {
-                currentModel.traverse(child => {
-                    if (child.isMesh) randomizeMesh(child);
-                });
-            }
-            placedCubes.forEach(cube => randomizeMesh(cube));
+            if (currentModel) currentModel.traverse(c => { if (c.isMesh) randomizeMesh(c); });
+            placedCubes.forEach(randomizeMesh);
             setStatus('随机上色完成');
         });
 
-        // --- 键盘快捷键 ---
+        // --- 键盘 ---
         window.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            if (e.key === 'h' || e.key === 'H') {
-                allHidden = !allHidden;
-                if (allHidden) {
-                    controlsPanel.classList.add('collapsed');
-                    toggleControlsBtn.textContent = '▲';
-                    setStatus('面板已隐藏 · 按 H 恢复');
-                } else {
-                    controlsPanel.classList.remove('collapsed');
-                    toggleControlsBtn.textContent = '▼';
-                    setStatus('面板已恢复');
-                }
-            } else if (e.key === 'p' || e.key === 'P') {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'p' || e.key === 'P') {
                 placeMode = !placeMode;
                 updatePlaceModeUI();
-                setStatus(placeMode ? '放置模式 · 点击场景放置立方体' : '已退出放置模式');
+                setStatus(placeMode ? '放置模式' : '退出放置');
             } else if (e.key === 'Escape') {
-                if (placeMode) {
-                    placeMode = false;
-                    updatePlaceModeUI();
-                    setStatus('已取消放置模式');
-                }
+                if (placeMode) { placeMode = false; updatePlaceModeUI(); setStatus('取消放置'); }
                 palettePopup.classList.remove('show');
             }
         });
 
-        // --- 收集所有网格（用于导出）---
+        // --- 导出 ---
         function getAllExportableMeshes() {
             const meshes = [];
             if (currentModel) {
@@ -1211,20 +1135,13 @@
             return meshes;
         }
 
-        // --- 导出 ZIP ---
         exportZipBtn.addEventListener('click', async () => {
             const meshesInfo = getAllExportableMeshes();
-            if (meshesInfo.length === 0) {
-                setStatus('没有模型可导出', true);
-                return;
-            }
-            if (!JSZip || !saveAs) {
-                setStatus('导出依赖加载失败，请刷新页面', true);
-                return;
-            }
+            if (meshesInfo.length === 0) { setStatus('没有模型', true); return; }
+            if (!JSZip || !saveAs) { setStatus('依赖加载失败', true); return; }
 
             showLoading(true);
-            setStatus('正在生成导出文件...');
+            setStatus('生成文件...');
 
             try {
                 let totalFaces = 0;
@@ -1233,16 +1150,11 @@
                     if (posAttr) totalFaces += posAttr.count / 3;
                 });
                 totalFaces = Math.floor(totalFaces);
-
-                if (totalFaces === 0) {
-                    setStatus('模型面数为0', true);
-                    showLoading(false);
-                    return;
-                }
+                if (totalFaces === 0) { setStatus('无面', true); showLoading(false); return; }
 
                 const cols = Math.ceil(Math.sqrt(totalFaces));
                 const rows = Math.ceil(totalFaces / cols);
-                const texSize = Math.min(4096, Math.max(512, cols * 20));
+                const texSize = Math.min(2048, Math.max(512, cols * 24));
                 const cellW = texSize / cols;
                 const cellH = texSize / rows;
 
@@ -1250,7 +1162,6 @@
                 canvas.width = texSize;
                 canvas.height = texSize;
                 const ctx = canvas.getContext('2d');
-
                 if (importedTexture) {
                     ctx.drawImage(importedTexture.image, 0, 0, texSize, texSize);
                 } else {
@@ -1259,14 +1170,9 @@
                 }
 
                 let globalFaceIdx = 0;
-                const vertexLines = [];
-                const uvLines = [];
-                const normalLines = [];
-                const faceLines = [];
+                const vertexLines = [], uvLines = [], normalLines = [], faceLines = [];
                 let vOffset = 1, vtOffset = 1, vnOffset = 1;
 
-                // 需要将局部坐标转换到世界坐标，并统一到模型空间
-                // 由于导出时模型位置各不相同，我们使用世界矩阵转换顶点
                 meshesInfo.forEach(({ mesh, worldMatrix }) => {
                     const geometry = mesh.geometry;
                     const posAttr = geometry.getAttribute('position');
@@ -1275,7 +1181,6 @@
                     if (!posAttr) return;
 
                     const vCount = posAttr.count;
-
                     let uvAttr = geometry.getAttribute('uv');
                     if (!uvAttr) {
                         const uvs = new Float32Array(vCount * 2);
@@ -1284,7 +1189,6 @@
                     }
                     const uvArray = uvAttr.array;
 
-                    // 应用世界矩阵
                     const tempVec = new THREE.Vector3();
                     const tempNormal = new THREE.Vector3();
                     const normalMatrix = new THREE.Matrix3().getNormalMatrix(worldMatrix);
@@ -1327,21 +1231,14 @@
                                 b = colorAttr.array[ci*3+2];
                             }
                         }
-
                         ctx.fillStyle = `rgba(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)},0.85)`;
                         ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
 
-                        const v1 = vOffset + f * 3;
-                        const v2 = vOffset + f * 3 + 1;
-                        const v3 = vOffset + f * 3 + 2;
-                        const vt1 = vtOffset + f * 3;
-                        const vt2 = vtOffset + f * 3 + 1;
-                        const vt3 = vtOffset + f * 3 + 2;
+                        const v1 = vOffset + f * 3, v2 = v1 + 1, v3 = v1 + 2;
+                        const vt1 = vtOffset + f * 3, vt2 = vt1 + 1, vt3 = vt1 + 2;
 
                         if (normalAttr) {
-                            const vn1 = vnOffset + f * 3;
-                            const vn2 = vnOffset + f * 3 + 1;
-                            const vn3 = vnOffset + f * 3 + 2;
+                            const vn1 = vnOffset + f * 3, vn2 = vn1 + 1, vn3 = vn1 + 2;
                             faceLines.push(`f ${v1}/${vt1}/${vn1} ${v2}/${vt2}/${vn2} ${v3}/${vt3}/${vn3}`);
                         } else {
                             faceLines.push(`f ${v1}/${vt1} ${v2}/${vt2} ${v3}/${vt3}`);
@@ -1370,18 +1267,12 @@ mtllib model.mtl
 `;
                 objContent += vertexLines.join('\n') + '\n';
                 objContent += uvLines.join('\n') + '\n';
-                if (normalLines.length > 0) {
-                    objContent += normalLines.join('\n') + '\n';
-                }
-                objContent += 'g model\n';
-                objContent += 'usemtl material_0\n';
+                if (normalLines.length > 0) objContent += normalLines.join('\n') + '\n';
+                objContent += 'g model\nusemtl material_0\n';
                 objContent += faceLines.join('\n') + '\n';
 
                 const pngBlob = await new Promise((resolve, reject) => {
-                    canvas.toBlob(blob => {
-                        if (blob) resolve(blob);
-                        else reject(new Error('Canvas 转 PNG 失败'));
-                    }, 'image/png');
+                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG失败')), 'image/png');
                 });
 
                 const zip = new JSZip();
@@ -1395,8 +1286,7 @@ mtllib model.mtl
 
                 const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
                 saveAs(content, 'colored_model.zip');
-
-                setStatus('导出成功！ZIP 已下载');
+                setStatus('导出成功！');
             } catch (err) {
                 console.error(err);
                 setStatus('导出失败: ' + err.message, true);
@@ -1407,7 +1297,7 @@ mtllib model.mtl
 
         // --- 初始化 ---
         loadDefaultModel();
-        setStatus('就绪 · 点击面涂色或放置立方体');
+        setStatus('就绪 · 点击面涂色');
 
         // --- 窗口大小 ---
         window.addEventListener('resize', () => {
@@ -1416,7 +1306,7 @@ mtllib model.mtl
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // --- 动画循环 ---
+        // --- 动画 ---
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
